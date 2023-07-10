@@ -4,9 +4,9 @@
 
 ## BE #1 - Init Project 
 
-To launch the application use Uvicorn cli command:
+To launch the application execute main.py file:
 ```bash
-$ uvicorn app.main:app --reload
+$ python app/main.py
 ```
 
 Result:
