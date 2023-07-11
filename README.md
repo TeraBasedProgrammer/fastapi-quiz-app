@@ -6,7 +6,7 @@
 
 To launch the application execute main.py file:
 ```bash
-$ python app/main.py
+$ python -m app.main
 ```
 
 Result:

@@ -1,0 +1,22 @@
+# Python dirs
+__pycache__
+env/
+
+# Git files
+.git/
+.gitignore
+
+# Editor-specific files
+.vscode/
+.idea/
+
+# Docker files
+.dockerignore
+# Dockerfile
+docker-compose.yml
+
+# Other
+.env 
+.env.sample
+Makefile
+README.md
