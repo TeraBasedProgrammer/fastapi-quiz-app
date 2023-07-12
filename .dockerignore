@@ -11,7 +11,7 @@ env/
 .idea/
 
 # Docker files
-.dockerignore
+# .dockerignore
 # Dockerfile
 docker-compose.yml
 
