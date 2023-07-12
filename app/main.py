@@ -1,8 +1,13 @@
 import uvicorn
-from fastapi import FastAPI
+
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.sql import text
+from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 
-from config import settings
+from .db.database import get_db
+from .config import settings
 
 
 app = FastAPI()
@@ -25,6 +30,15 @@ app.add_middleware(
 async def root():
     return {"status_code": 200, "detail": "ok", "result": "working"}
 
+@app.get("/test-postgres")
+async def test_postgres(db: AsyncSession = Depends(get_db)):
+    try:
+        await db.execute(text("SELECT 1"))
+        return {"message": "Database connection successful"}
+    except SQLAlchemyError as e:
+        return {"message": "Database connection failed", "exception": f"{e.args[0]}"}
+    
+
 
 if __name__ == '__main__':
-    uvicorn.run('main:app', port=settings.port, reload=True)
+    uvicorn.run('app.main:app', port=settings.port, reload=True)

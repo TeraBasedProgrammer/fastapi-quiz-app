@@ -2,8 +2,9 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    host: str = 'localhost'
-    port: int = 8000
+    host: str 
+    port: int 
+    database_url: str
 
     class Config:
         env_file = ".env"
