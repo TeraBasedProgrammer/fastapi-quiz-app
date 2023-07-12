@@ -15,6 +15,7 @@ services:
       - local
     depends_on:
       - postgres
+      - redis
       
   postgres:
     image: postgres
@@ -27,6 +28,15 @@ services:
       - ".env.docker"
     networks:
       - local
+  
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - local
 
 
 networks:
@@ -34,3 +44,4 @@ networks:
   
 volumes:
   postgres_data:
+  redis_data:
