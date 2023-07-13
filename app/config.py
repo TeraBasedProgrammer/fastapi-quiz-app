@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     host: str 
     port: int 
     database_url: str
+    redis_url: str
 
     class Config:
         env_file = ".env"

@@ -12,7 +12,7 @@ from .config import settings
 
 
 app = FastAPI()
-redis = aioredis.Redis(host="redis", port=6379, db=0)
+redis = aioredis.from_url(settings.redis_url, decode_responses=True, encoding="utf-8", db=0)
 
 
 origins = [
@@ -33,7 +33,7 @@ async def root():
     return {"status_code": 200, "detail": "ok", "result": "working"}
 
 @app.get("/test-postgres")
-async def test_postgres(db: AsyncSession = Depends(get_db)):
+async def postgres_connect(db: AsyncSession = Depends(get_db)):
     try:
         await db.execute(text("SELECT 1"))
         return {"message": "Database connection successful"}
@@ -42,11 +42,11 @@ async def test_postgres(db: AsyncSession = Depends(get_db)):
     
 
 @app.get("/test-redis")
-async def test_redis():
+async def redis_connect():
     await redis.set("Ryan Gosling", "Literally me")
     value = await redis.get("Ryan Gosling")
     if value:
-        return {"message": f"Redis works! Ryan gosling is {value.decode()}"}
+        return {"message": f"Redis works! Ryan gosling is {value}"}
     return {"error": "You are not Ryan Gosling, redis doesn't work"} 
 
 
