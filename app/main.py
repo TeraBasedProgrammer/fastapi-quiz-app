@@ -1,18 +1,19 @@
 import uvicorn
 
+import redis.asyncio as rd
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from redis import asyncio as aioredis
+
 
 from .db.database import get_db
 from .config import settings
 
 
 app = FastAPI()
-redis = aioredis.from_url(settings.redis_url, decode_responses=True, encoding="utf-8", db=0)
+redis = rd.from_url(settings.redis_url, decode_responses=True, encoding="utf-8", db=0)
 
 
 origins = [

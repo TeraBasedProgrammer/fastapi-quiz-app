@@ -15,9 +15,7 @@ services:
       - local
     depends_on:
       - postgres
-      - test_postgres
       - redis
-      - test_redis
       
   postgres:
     image: postgres
