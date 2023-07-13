@@ -1,0 +1,49 @@
+version: '3.8'
+
+
+services:
+  web:
+    build: .
+    command: "uvicorn app.main:app --reload --host '0.0.0.0'"
+    volumes:
+      - ./app:/code/app
+    ports:
+      - 8000:8000
+    env_file:
+      - ./.env
+    networks:
+      - local
+    depends_on:
+      - postgres
+      - redis
+      
+  postgres:
+    image: postgres
+    restart: always
+    ports:
+      - 5432:5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/
+    environment:
+      - POSTGRES_USER=ryan_gosling
+      - POSTGRES_PASSWORD=password123
+      - POSTGRES_DB=quizz_app 
+    networks:
+      - local
+  
+  redis:
+    image: redis:latest
+    ports:
+      - 6379:6379
+    volumes:
+      - redis_data:/data
+    networks:
+      - local
+
+
+networks:
+  local:
+  
+volumes:
+  postgres_data:
+  redis_data:
