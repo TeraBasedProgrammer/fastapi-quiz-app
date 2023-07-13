@@ -15,24 +15,28 @@ services:
       - local
     depends_on:
       - postgres
+      - test_postgres
       - redis
+      - test_redis
       
   postgres:
     image: postgres
     restart: always
     ports:
-      - "5432:5432"
+      - 5432:5432
     volumes:
       - postgres_data:/var/lib/postgresql/
-    env_file:
-      - ".env.docker"
+    environment:
+      - POSTGRES_USER=ryan_gosling
+      - POSTGRES_PASSWORD=password123
+      - POSTGRES_DB=quizz_app 
     networks:
       - local
   
   redis:
     image: redis:latest
     ports:
-      - "6379:6379"
+      - 6379:6379
     volumes:
       - redis_data:/data
     networks:
