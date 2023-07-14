@@ -7,8 +7,6 @@ services:
     command: >
       sh -c "alembic upgrade head &&
             uvicorn app.main:app --reload --host '0.0.0.0'"
-
-    # command: "uvicorn app.main:app --reload --host '0.0.0.0'"
     volumes:
       - ./app:/code/app
       - ./migrations:/code/migrations

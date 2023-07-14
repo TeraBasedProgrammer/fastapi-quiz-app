@@ -1,6 +1,9 @@
-import uvicorn
+import logging
+import logging.config
+from app.core.log_config import LOGGING_CONFIG
 from typing import List
 
+import uvicorn
 import redis.asyncio as rd
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
@@ -15,10 +18,13 @@ from fastapi import HTTPException
 from fastapi.exceptions import ResponseValidationError 
 
 from .db.database import get_session, init_db
-from .config import settings
+from app.core.config import settings
 from .schemas.users import UserSchema, UserCreate
 from .models.models import User
 
+
+logging.config.dictConfig(LOGGING_CONFIG)
+logger = logging.getLogger("main_logger")
 
 app = FastAPI()
 redis = rd.from_url(settings.redis_url, decode_responses=True, encoding="utf-8", db=0)
@@ -36,6 +42,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 @app.exception_handler(ResponseValidationError)
 async def validation_exception_handler(request: Request, exc: ResponseValidationError):
@@ -70,6 +77,10 @@ async def add_user(user: UserCreate, session: AsyncSession = Depends(get_session
 @app.get("/test-postgres")
 async def postgres_connect(session: AsyncSession = Depends(get_session)):
     try:
+        logger.info("Logger info message")
+        logger.error("Logger error message")
+        logger.debug("Logger debug message")
+        logger.warning("Logger warning message")
         await session.execute(text("SELECT 1"))
         return {"message": "Database connection successful"}
     except SQLAlchemyError as e:
