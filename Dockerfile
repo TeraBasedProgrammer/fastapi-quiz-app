@@ -5,12 +5,14 @@ ENV PYTHONUNBUFFERED 1
 
 WORKDIR /code
 
-COPY ["./requirements.txt", "./pyproject.toml",  "./"]
+COPY ["./requirements.txt", "./pyproject.toml", "./alembic.ini",  "./"]
 
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY ./app ./app
 
 COPY ./tests ./tests
+
+COPY ./migrations ./migrations 
 
 EXPOSE 8000
