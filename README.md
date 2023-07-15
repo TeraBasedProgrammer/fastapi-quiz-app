@@ -69,3 +69,18 @@ tests/test_main.py .                                                     [100%]
 
 ============================== 1 passed in 1.06s ===============================
 ```
+
+## BE #3 - Add databases
+---
+
+## BE #4 - Add migrations
+* To make a new migration simply type this command:
+```bash
+$ alembic revision --autogenerate -m "migration name"
+```
+If there are any changes in the data structure Alembic will automatically detect them and write an appropriate migration
+
+* To apply a migration use this command:
+```bash
+$ alembic upgrade head
+```
