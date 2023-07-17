@@ -1,6 +1,6 @@
 import logging
 import logging.config
-from app.core.log_config import LOGGING_CONFIG
+from .log_config import LOGGING_CONFIG
 from typing import List
 
 import uvicorn
@@ -17,10 +17,10 @@ from fastapi.encoders import jsonable_encoder
 from fastapi import HTTPException
 from fastapi.exceptions import ResponseValidationError 
 
-from .db.database import get_session, init_db
-from app.core.config import settings
-from .schemas.users import UserSchema, UserCreate
-from .models.models import User
+from .database import get_async_session
+from .config import settings
+from .users.schemas import UserSchema, UserCreate
+from .users.models import User
 
 
 logging.config.dictConfig(LOGGING_CONFIG)
@@ -53,14 +53,14 @@ async def validation_exception_handler(request: Request, exc: ResponseValidation
 
 
 @app.get("/users/", response_model=list[UserSchema])
-async def get_users(session: AsyncSession = Depends(get_session)):
+async def get_users(session: AsyncSession = Depends(get_async_session)):
     result = await session.execute(select(User))
     users = result.scalars().all()
     return [UserSchema(id=u.id, email=u.email, username=u.username, registered_at=str(u.registered_at)) for u in users]
 
 
 @app.post("/users/", response_model=UserSchema)
-async def add_user(user: UserCreate, session: AsyncSession = Depends(get_session)):
+async def add_user(user: UserCreate, session: AsyncSession = Depends(get_async_session)):
     new_user = User(username=user.username, password=user.password, email=user.email)
     session.add(new_user)
     try:
@@ -75,7 +75,7 @@ async def add_user(user: UserCreate, session: AsyncSession = Depends(get_session
 
 
 @app.get("/test-postgres")
-async def postgres_connect(session: AsyncSession = Depends(get_session)):
+async def postgres_connect(session: AsyncSession = Depends(get_async_session)):
     try:
         logger.info("Logger info message")
         logger.error("Logger error message")

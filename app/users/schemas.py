@@ -18,6 +18,11 @@ class UserUpdate(UserBase):
     password: str = None
 
 
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+
 class UserSchema(UserBase):
     id: int
     registered_at: datetime
@@ -26,14 +31,5 @@ class UserSchema(UserBase):
         from_attributes = True
 
 
-class SignInRequest(BaseModel):
-    email: str
-    password: str
-
-
 class UsersListResponse(BaseModel):
     users: List[UserSchema]
-
-
-class UserDetailResponse(BaseModel):
-    user: UserSchema

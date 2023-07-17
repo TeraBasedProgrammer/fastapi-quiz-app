@@ -27,7 +27,7 @@ services:
       - 5432:5432
     volumes:
       - postgres_data:/var/lib/postgresql/data/
-      - ./docker_postgres_init.sql:/docker-entrypoint-initdb.d/docker_postgres_init.sql
+      # - ./docker_postgres_init.sql:/docker-entrypoint initdb.d/docker_postgres_init.sql
     environment:
       - POSTGRES_USER=ryan_gosling
       - POSTGRES_PASSWORD=password123
