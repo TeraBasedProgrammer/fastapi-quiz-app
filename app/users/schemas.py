@@ -1,26 +1,25 @@
+import re
+
+from fastapi import HTTPException
 from datetime import datetime
 from pydantic import BaseModel
-
-from pydantic import BaseModel
-from typing import List
+from pydantic import EmailStr
+from pydantic import constr
+from pydantic import validator
+from typing import List, Optional
 
 
 class UserBase(BaseModel):
-    email: str
-    username: str
+    email: EmailStr
+    name: Optional[str]
 
-
-class UserCreate(UserBase):
-    password: str
-
-
-class UserUpdate(UserBase):
-    password: str = None
-
-
-class UserLogin(BaseModel):
-    email: str
-    password: str
+    @validator("name")
+    def validate_name(cls, value):
+        if not re.compile(r"^[a-zA-Z\- ]+$").match(value):
+            raise HTTPException(
+                status_code=400, detail="Name should contain only english letters"
+            )
+        return value
 
 
 class UserSchema(UserBase):
@@ -31,5 +30,37 @@ class UserSchema(UserBase):
         from_attributes = True
 
 
-class UsersListResponse(BaseModel):
-    users: List[UserSchema]
+class UserCreate(UserBase):
+    password: str
+
+    @validator("password")
+    def validate_name(cls, value):
+        if not re.compile(r"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$").match(value):
+            raise HTTPException(
+                status_code=400, detail="Password should contain at least eight characters, at least one letter and one number"
+            )
+        return value
+
+
+class UserUpdateRequest(UserBase):
+    name: Optional[constr(min_length=1)]
+    email: Optional[EmailStr]
+    password: Optional[str]
+
+    @validator("password")
+    def validate_name(cls, value):
+        if not re.compile(r"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$").match(value):
+            raise HTTPException(
+                status_code=400, detail="Password should contain at least eight characters, at least one letter and one number"
+            )
+        return value
+
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+
+class DeleteUserResponse(BaseModel):
+    deleted_user_id: int
+
