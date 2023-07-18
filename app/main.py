@@ -6,7 +6,7 @@ from typing import List
 import uvicorn
 import redis.asyncio as rd
 from fastapi import FastAPI
-# from fastapi_pagination import add_pagination
+
 from fastapi.middleware.cors import CORSMiddleware
 
 from .users.routers import user_router

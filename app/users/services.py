@@ -1,3 +1,4 @@
+import logging
 from typing import List, Union
 from passlib.context import CryptContext
 
@@ -12,6 +13,9 @@ from app.users.models import User
 from .schemas import UserSchema, UserUpdateRequest
 
 
+logger = logging.getLogger("main_logger")
+
+
 class UserRepository:
     """Data Access Layer for operating user info"""
 
@@ -21,13 +25,17 @@ class UserRepository:
 
 
     async def create_user(self, user_data: UserSchema) -> User:
+        logger.debug(f"Received new user data: {user_data}")
         new_user = User(
            **user_data.model_dump() 
         )
         new_user.password = self.pwd_context.hash(new_user.password)
+        logger.debug(f"Enctypted the password: {new_user.password[:10]}...")
         self.db_session.add(new_user)
         await self.db_session.commit()
+        logger.debug(f"Successfully inserted new user instance into the database")
         return new_user
+
 
     async def get_users(self) -> List[User]:
         result = await self.db_session.execute(select(User))
@@ -35,16 +43,23 @@ class UserRepository:
     
 
     async def get_user_by_id(self, user_id: int) -> Union[User, None]:
-        return (await self.db_session.execute(
+        logger.debug(f"Received user id: '{user_id}'")
+        result = (await self.db_session.execute(
                 select(User).where(User.id == user_id))).scalar_one_or_none()
+        logger.debug(f"Retrieved user by id '{user_id}': {result.email}")
+        return result
         
 
     async def get_user_by_email(self, email: EmailStr) -> Union[User, None]:
-        return (await self.db_session.execute(
+        logger.debug(f"Received user email: '{email}'")
+        result = (await self.db_session.execute(
                 select(User).where(User.email == email))).scalar_one_or_none()
+        logger.debug(f"Retrieved user by email '{email}': '{result.id}'")
+        return result
 
 
     async def update_user(self, user_id: int, user_data:UserUpdateRequest) -> Union[UserSchema, None]:
+        logger.debug(f"Received user data: {user_data}")
         query = (
             update(User)
             .where(User.id == user_id)
@@ -53,13 +68,22 @@ class UserRepository:
         )
         res = await self.db_session.execute(query)
         await self.db_session.commit()
+        logger.debug(f"Successfully updatetd user instance {user_id}")
         return res.scalar_one()
 
 
     async def delete_user(self, user_id: int) -> Union[int, None]:
+        logger.debug(f"Received user id: '{user_id}'")
         query = (
             delete(User)
             .where(User.id == user_id)
             .returning(User.id)
         )
-        return (await self.db_session.execute(query)).scalar_one()
+
+        result = (await self.db_session.execute(query)).scalar_one()
+        logger.debug(f"Successfully deleted user '{result}' from the database")
+        return result
+
+
+def error_handler(message: str):
+    return {"error": message}
