@@ -12,17 +12,15 @@ from app.users.models import User
 from .schemas import UserSchema, UserUpdateRequest
 
 
-class UserDAL:
+class UserRepository:
     """Data Access Layer for operating user info"""
 
     def __init__(self, db_session: AsyncSession):
         self.db_session = db_session
         self.pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-    async def create_user(
-        self,
-        user_data: UserSchema
-    ) -> User:
+
+    async def create_user(self, user_data: UserSchema) -> User:
         new_user = User(
            **user_data.model_dump() 
         )
@@ -37,20 +35,13 @@ class UserDAL:
     
 
     async def get_user_by_id(self, user_id: int) -> Union[User, None]:
-        res = await self.db_session.execute(
-                select(User).where(User.id == user_id)
-                )
-        user_data = res.fetchone()
-        if user_data is not None:
-            return user_data[0]
+        return (await self.db_session.execute(
+                select(User).where(User.id == user_id))).scalar_one_or_none()
         
+
     async def get_user_by_email(self, email: EmailStr) -> Union[User, None]:
-        res = await self.db_session.execute(
-            select(User).where(User.email == email)
-        )
-        user_data = res.fetchone()
-        if user_data is not None:
-            return user_data[0]
+        return (await self.db_session.execute(
+                select(User).where(User.email == email))).scalar_one_or_none()
 
 
     async def update_user(self, user_id: int, user_data:UserUpdateRequest) -> Union[UserSchema, None]:
@@ -62,9 +53,7 @@ class UserDAL:
         )
         res = await self.db_session.execute(query)
         await self.db_session.commit()
-        updated_user_data = res.fetchone()
-        if updated_user_data is not None:
-            return updated_user_data[0]
+        return res.scalar_one()
 
 
     async def delete_user(self, user_id: int) -> Union[int, None]:
@@ -73,7 +62,4 @@ class UserDAL:
             .where(User.id == user_id)
             .returning(User.id)
         )
-        res = await self.db_session.execute(query)
-        deleted_user_id_row = res.fetchone()
-        if deleted_user_id_row is not None:
-            return deleted_user_id_row[0]
+        return (await self.db_session.execute(query)).scalar_one()
