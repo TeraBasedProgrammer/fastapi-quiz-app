@@ -51,9 +51,9 @@ class UserCreate(UserBase):
 
 
 class UserUpdateRequest(UserBase):
-    name: Optional[constr(min_length=1)]
-    email: Optional[EmailStr]
-    password: Optional[str]
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    password: Optional[str] = None
 
     @validator("password")
     def validate_name(cls, value):

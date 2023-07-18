@@ -1,8 +1,9 @@
 import logging
-from typing import List, Union
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-# from fastapi_pagination import Page, paginate
+from fastapi_pagination import Page, Params, paginate
+# from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
@@ -20,16 +21,17 @@ user_router = APIRouter(
 )
 
 
-@user_router.get("/", response_model=List[UserSchema])
-async def get_users(session: AsyncSession = Depends(get_async_session)):
+@user_router.get("/", response_model=Page[UserSchema])
+async def get_users(session: AsyncSession = Depends(get_async_session),
+                    params: Params = Depends()):
     logger.info("Getting all user from the database")
     crud = UserRepository(session)
     result = await crud.get_users() 
     logger.info("All user have been successfully retrieved")
-    return result
+    return paginate(result)
 
 
-@user_router.get("/{user_id}", response_model=Union[UserSchema, None])
+@user_router.get("/{user_id}", response_model=Optional[UserSchema])
 async def get_user(user_id: int, session: AsyncSession = Depends(get_async_session)):
     logger.info(f"Trying to get User instance by id '{user_id}'")
     crud = UserRepository(session)
@@ -54,7 +56,7 @@ async def create_user(user: UserCreate, session: AsyncSession = Depends(get_asyn
     return result
 
 
-@user_router.patch("/{user_id}/update", response_model=Union[UserSchema, None])
+@user_router.patch("/{user_id}/update", response_model=Optional[UserSchema])
 async def update_user(user_id: int, body: UserUpdateRequest, session: AsyncSession = Depends(get_async_session)) -> UserSchema:
     logger.info(f"Trying to update User instance '{user_id}'")
     crud = UserRepository(session)
@@ -79,7 +81,7 @@ async def update_user(user_id: int, body: UserUpdateRequest, session: AsyncSessi
         raise HTTPException(400, detail=error_handler("User with this email already exists"))
 
 
-@user_router.delete("/{user_id}/delete", response_model=Union[DeleteUserResponse, None])
+@user_router.delete("/{user_id}/delete", response_model=Optional[DeleteUserResponse])
 async def delete_user(user_id: int, session: AsyncSession = Depends(get_async_session)) -> DeleteUserResponse:
     logger.info(f"Trying to delete User instance '{user_id}'")
     crud = UserRepository(session)

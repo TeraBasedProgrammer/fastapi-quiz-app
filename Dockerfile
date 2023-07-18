@@ -7,7 +7,7 @@ WORKDIR /code
 
 COPY ["./requirements.txt", "./pyproject.toml", "./alembic.ini",  "./"]
 
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt  
 
 COPY ./app ./app
 

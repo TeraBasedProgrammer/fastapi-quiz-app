@@ -1,5 +1,5 @@
 import logging
-from typing import List, Union
+from typing import List, Optional
 from passlib.context import CryptContext
 
 from sqlalchemy import and_
@@ -42,23 +42,25 @@ class UserRepository:
         return result.scalars().all()
     
 
-    async def get_user_by_id(self, user_id: int) -> Union[User, None]:
+    async def get_user_by_id(self, user_id: int) -> Optional[User]:
         logger.debug(f"Received user id: '{user_id}'")
         result = (await self.db_session.execute(
                 select(User).where(User.id == user_id))).scalar_one_or_none()
-        logger.debug(f"Retrieved user by id '{user_id}': {result.email}")
+        if result:
+            logger.debug(f"Retrieved user by id '{user_id}': {result.email}")
         return result
         
 
-    async def get_user_by_email(self, email: EmailStr) -> Union[User, None]:
+    async def get_user_by_email(self, email: EmailStr) -> Optional[User]:
         logger.debug(f"Received user email: '{email}'")
         result = (await self.db_session.execute(
                 select(User).where(User.email == email))).scalar_one_or_none()
-        logger.debug(f"Retrieved user by email '{email}': '{result.id}'")
+        if result:
+            logger.debug(f"Retrieved user by email '{email}': '{result.id}'")
         return result
 
 
-    async def update_user(self, user_id: int, user_data:UserUpdateRequest) -> Union[UserSchema, None]:
+    async def update_user(self, user_id: int, user_data:UserUpdateRequest) -> Optional[UserSchema]:
         logger.debug(f"Received user data: {user_data}")
         query = (
             update(User)
@@ -72,7 +74,7 @@ class UserRepository:
         return res.scalar_one()
 
 
-    async def delete_user(self, user_id: int) -> Union[int, None]:
+    async def delete_user(self, user_id: int) -> Optional[int]:
         logger.debug(f"Received user id: '{user_id}'")
         query = (
             delete(User)
