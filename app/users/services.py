@@ -11,6 +11,7 @@ from pydantic import EmailStr
 
 from app.users.models import User
 from .schemas import UserSchema, UserUpdateRequest
+from app.auth.handlers import AuthHandler
 
 
 logger = logging.getLogger("main_logger")
@@ -21,7 +22,7 @@ class UserRepository:
 
     def __init__(self, db_session: AsyncSession):
         self.db_session = db_session
-        self.pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        self.auth = AuthHandler()
 
 
     async def create_user(self, user_data: UserSchema) -> User:
@@ -29,7 +30,7 @@ class UserRepository:
         new_user = User(
            **user_data.model_dump() 
         )
-        new_user.password = self.pwd_context.hash(new_user.password)
+        new_user.password = self.auth.get_password_hash(new_user.password)
         logger.debug(f"Enctypted the password: {new_user.password[:10]}...")
         self.db_session.add(new_user)
         await self.db_session.commit()
@@ -83,6 +84,7 @@ class UserRepository:
         )
 
         result = (await self.db_session.execute(query)).scalar_one()
+        await self.db_session.commit()
         logger.debug(f"Successfully deleted user '{result}' from the database")
         return result
 

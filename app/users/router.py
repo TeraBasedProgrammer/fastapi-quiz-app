@@ -1,16 +1,18 @@
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi_pagination import Page, Params, paginate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
 from app.database import get_async_session
-from .schemas import UserSchema, UserCreate, DeleteUserResponse, UserUpdateRequest
+from .schemas import UserSchema, DeleteUserResponse, UserUpdateRequest
 from .services import UserRepository, error_handler
+from app.auth.handlers import AuthHandler
 
 
+auth_handler = AuthHandler()
 logger = logging.getLogger("main_logger")
 
 user_router = APIRouter(
@@ -30,6 +32,16 @@ async def get_users(session: AsyncSession = Depends(get_async_session),
     return paginate(result, params)
 
 
+@user_router.get("/me", response_model=Optional[UserSchema])
+async def get_current_user(session: AsyncSession = Depends(get_async_session),
+                           auth=Depends(auth_handler.auth_wrapper)) -> UserSchema:
+    logger.info(f"Accessing current user info")
+    crud = UserRepository(session)
+    current_user = await crud.get_user_by_email(auth)
+    logger.info(f"Successfully returned current user ({auth}) info")
+    crud = UserRepository(session)
+    return current_user
+
 @user_router.get("/{user_id}", response_model=Optional[UserSchema])
 async def get_user(user_id: int, session: AsyncSession = Depends(get_async_session)):
     logger.info(f"Trying to get User instance by id '{user_id}'")
@@ -40,19 +52,6 @@ async def get_user(user_id: int, session: AsyncSession = Depends(get_async_sessi
         raise HTTPException(404, error_handler("User is not found"))
     logger.info(f"Successfully retrieved User instance '{user_id}'")
     return info
-
-
-@user_router.post("/", response_model=UserSchema)
-async def create_user(user: UserCreate, session: AsyncSession = Depends(get_async_session)):
-    logger.info(f"Trying to create new User instance")
-    crud = UserRepository(session)
-    user_existing_object = await crud.get_user_by_email(user.email)
-    if user_existing_object: 
-        logger.warning(f"Validation error: User with email '{user.email}' already exists")
-        raise HTTPException(400, detail=error_handler("User with this email already exists"))
-    result = await crud.create_user(user)
-    logger.info(f"New user instance has been successfully created")
-    return result
 
 
 @user_router.patch("/{user_id}/update", response_model=Optional[UserSchema])
@@ -93,3 +92,6 @@ async def delete_user(user_id: int, session: AsyncSession = Depends(get_async_se
     deleted_user_id = await crud.delete_user(user_id)
     logger.info(f"User {user_id} has been successfully deleted from the database")
     return DeleteUserResponse(deleted_user_id=deleted_user_id)
+
+
+

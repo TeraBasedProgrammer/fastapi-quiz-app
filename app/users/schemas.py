@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from pydantic import EmailStr
 from pydantic import constr
 from pydantic import validator
-from typing import List, Optional, TypeVar, Generic
+from typing import Optional, TypeVar
 
 
 logger = logging.getLogger("main_logger")
@@ -37,19 +37,6 @@ class UserSchema(UserBase):
         from_attributes = True
 
 
-class UserCreate(UserBase):
-    password: str
-
-    @validator("password")
-    def validate_password(cls, value):
-        if not re.compile(r"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$").match(value):
-            logger.warning(f"Validation error: password doesn't match the pattern")
-            raise HTTPException(
-                status_code=400, detail="Password should contain at least eight characters, at least one letter and one number"
-            )
-        return value
-
-
 class UserUpdateRequest(UserBase):
     name: Optional[str] = None
     email: Optional[EmailStr] = None
@@ -62,11 +49,6 @@ class UserUpdateRequest(UserBase):
                 status_code=400, detail="Password should contain at least eight characters, at least one letter and one number"
             )
         return value
-
-
-class UserLogin(BaseModel):
-    email: str
-    password: str
 
 
 class DeleteUserResponse(BaseModel):
