@@ -27,13 +27,27 @@ services:
       - 5432:5432
     volumes:
       - postgres_data:/var/lib/postgresql/data/
-      - ./docker_postgres_init.sql:/docker-entrypoint-initdb.d/docker_postgres_init.sql
     environment:
       - POSTGRES_USER=ryan_gosling
       - POSTGRES_PASSWORD=password123
       - POSTGRES_DB=quizz_app 
     networks:
       - local
+
+  test_postgres:
+    image: postgres
+    restart: always
+    ports:
+      - 5433:5432
+    volumes:
+      - test_postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=test_user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=test 
+    networks:
+      - local
+
   
   redis:
     image: redis:latest
@@ -47,7 +61,9 @@ services:
 
 networks:
   local:
+    driver: bridge
   
 volumes:
   postgres_data:
   redis_data:
+  test_postgres_data:

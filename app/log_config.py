@@ -58,7 +58,7 @@ LOGGING_CONFIG = {
     "disable_existing_loggers": False,
     "formatters": {
         "default": {
-            "()": "app.core.log_config.ColorizedFormatter",
+            "()": "app.log_config.ColorizedFormatter",
             "fmt": "%(asctime)s | %(levelprefix)s | %(funcName)s | %(message)s", 
             "use_colors": True,
         },
