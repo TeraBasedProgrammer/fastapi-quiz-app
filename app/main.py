@@ -2,7 +2,7 @@ import logging
 import logging.config
 
 from fastapi_pagination import add_pagination
-from .log_config import LOGGING_CONFIG
+from fastapi_pagination.utils import disable_installed_extensions_check
 from typing import List
 
 import uvicorn
@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .users.routers import user_router
 from .database import get_async_session
 from .config import settings
+from .log_config import LOGGING_CONFIG
 
 
 
@@ -31,6 +32,7 @@ app = FastAPI()
 
 # Enable pagination in the app
 add_pagination(app)
+disable_installed_extensions_check()
 
 # App routers
 app.include_router(user_router)

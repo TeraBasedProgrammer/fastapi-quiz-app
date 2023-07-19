@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi_pagination import Page, Params, paginate
@@ -27,7 +27,7 @@ async def get_users(session: AsyncSession = Depends(get_async_session),
     crud = UserRepository(session)
     result = await crud.get_users() 
     logger.info("All user have been successfully retrieved")
-    return paginate(result)
+    return paginate(result, params)
 
 
 @user_router.get("/{user_id}", response_model=Optional[UserSchema])
@@ -38,7 +38,7 @@ async def get_user(user_id: int, session: AsyncSession = Depends(get_async_sessi
     if not info:
         logger.warning(f"User '{user_id}' is not found")
         raise HTTPException(404, error_handler("User is not found"))
-    logger.info(f"Successfully retrieved User instanc '{user_id}'")
+    logger.info(f"Successfully retrieved User instance '{user_id}'")
     return info
 
 
