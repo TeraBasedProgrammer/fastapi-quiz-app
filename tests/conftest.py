@@ -1,30 +1,3 @@
-# main_app = app  # this app comes from my main file, in which i declared FAST API as app
-
-# def start_application():   # start application
-#   return main_app
-
-# @pytest.fixture(scope="function")
-# def app():
-#    """
-#    Create a fresh database on each test case.
-#    """
-#    Base.metadata.create_all(engine)  # Create the tables.
-#    _app = start_application()
-#    yield _app
-#    Base.metadata.drop_all(engine)    # drop that tables
-
-
-# @pytest.fixture(scope="function")
-# async def db_session(app: FastAPI):
-#     connection = engine.connect()
-#     transaction = connection.begin()
-#     session = TestAsyncSessionFactory(bind=connection)
-#     yield session  # use the session in tests.
-#     session.close()
-#     transaction.rollback()
-#     connection.close()
-    
-
 import asyncio
 from typing import Any
 from typing import AsyncGenerator
