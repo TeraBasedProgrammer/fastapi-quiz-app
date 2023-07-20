@@ -38,7 +38,6 @@ class VerifyAuth0Token():
                 issuer=self.config.auth0_issuer,
             )
         except jwt.InvalidTokenError as e:
-            print("invalid token error")
             raise HTTPException(status_code=401, detail='Invalid token or its signature has expired')
 
         return {"email": payload['email'], "auth0": True}

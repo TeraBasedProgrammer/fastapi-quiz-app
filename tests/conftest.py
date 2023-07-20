@@ -1,4 +1,6 @@
 import asyncio
+import os
+from pathlib import Path
 from typing import Any
 from typing import AsyncGenerator
 
@@ -7,12 +9,16 @@ import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.ext.asyncio import async_sessionmaker
+from py_dotenv import read_dotenv
 
 from app.main import app
+from app.config import settings
 from app.database import get_async_session, Base
 
+# Activate venv
+read_dotenv(os.path.join(Path(__file__).resolve().parent.parent, '.env'))
 
-DATABASE_URL = "postgresql+asyncpg://test_user:password@0.0.0.0:5433/test"
+DATABASE_URL = settings.test_database_url
 
 
 @pytest.fixture(scope="session")
@@ -61,39 +67,4 @@ async def client() -> AsyncGenerator[httpx.AsyncClient, Any]:
     app.dependency_overrides[get_async_session] = _get_test_async_session
     async with httpx.AsyncClient(app=app, base_url="http://testserver") as client:
         yield client
-
-
-# @pytest.fixture(scope="session")
-# async def asyncpg_pool():
-#     pool = await asyncpg.create_pool(
-#         "".join(settings.test_database_url.split("+asyncpg"))
-#     )
-#     yield pool
-#     pool.close() 
-
-
-# @pytest.fixture
-# async def get_user(asyncpg_pool):
-#     async def get_user_by_id(user_id: str):
-#         async with asyncpg_pool.acquire() as connection:
-#             return await connection.fetch(
-#                 "SELECT * FROM users WHERE id = %s;" % user_id
-#             )
-
-#     return get_user_by_id  
-    
-
-# @pytest.fixture
-# async def create_user(asyncpg_pool):
-#     async def create_user(
-#         email: str,
-#         username: str,
-#         password: bool,
-#     ):
-#         async with asyncpg_pool.acquire() as connection:
-#             return await connection.execute(
-#                 "INSERT INTO users (email, username, password, registered_at) VALUES (%s, %s, %s, %s)" 
-#                 % (email, username, password, datetime.utcnow)
-#             )
-
-#     return create_user
+        

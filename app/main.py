@@ -1,22 +1,16 @@
 import logging
 import logging.config
 
-from fastapi_pagination import add_pagination
-from fastapi_pagination.utils import disable_installed_extensions_check
-from typing import List
-
 import uvicorn
 import redis.asyncio as rd
-from fastapi import FastAPI, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import text
-
+from fastapi import FastAPI
+from fastapi_pagination import add_pagination
+from fastapi_pagination.utils import disable_installed_extensions_check
 from fastapi.middleware.cors import CORSMiddleware
+from typing import List
 
 from .users.router import user_router
 from .auth.router import auth_router
-from .database import get_async_session
 from .config import settings
 from .log_config import LOGGING_CONFIG
 

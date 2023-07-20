@@ -1,9 +1,7 @@
 import logging
 from datetime import datetime
 from typing import List, Optional
-from passlib.context import CryptContext
 
-from sqlalchemy import and_
 from sqlalchemy import select
 from sqlalchemy import update
 from sqlalchemy import delete
@@ -33,7 +31,6 @@ class UserRepository:
         new_user = User(
            **user_data.model_dump() 
         )
-        print(user_data)
         new_user.password = self.auth.get_password_hash(new_user.password)
         logger.debug(f"Enctypted the password: {new_user.password[:10]}...")
         if auth0:
@@ -101,7 +98,6 @@ class UserRepository:
         user_existing_object = await self.get_user_by_email(user_email)
         if not user_existing_object:
             logger.info("User with provided email hasn't been registered yet, creating new instance")
-            print(f"pass{datetime.utcnow()}")
             await self.create_user(user_data=UserSignUp(email=user_email, password=f"pass{datetime.now().strftime('%Y%m%d%H%M%S')}", auth0_registered=True))
             return
         if user_existing_object.auth0_registered:
