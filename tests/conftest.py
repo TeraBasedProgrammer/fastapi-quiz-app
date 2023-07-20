@@ -2,7 +2,7 @@ import asyncio
 import os
 from pathlib import Path
 from typing import Any
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Generator
 
 import pytest
 import httpx
@@ -18,25 +18,25 @@ from app.database import get_async_session, Base
 # Activate venv
 read_dotenv(os.path.join(Path(__file__).resolve().parent.parent, '.env'))
 
-DATABASE_URL = settings.test_database_url
+DATABASE_URL: str = settings.test_database_url
 
 
 @pytest.fixture(scope="session")
-def event_loop():
+def event_loop() -> Generator[asyncio.AbstractEventLoop, Any, Any]:
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
     loop.close()
 
 
 @pytest.fixture(scope="session", autouse=True)
-async def async_session_test():
+async def async_session_test() -> AsyncGenerator[AsyncSession, Any]:
     engine = create_async_engine(DATABASE_URL, echo=True)
     async_session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     yield async_session
 
 
 @pytest.fixture(scope='session', autouse=True)
-async def prepare_database():
+async def prepare_database() -> None:
     engine = create_async_engine(DATABASE_URL, echo=True)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -45,7 +45,7 @@ async def prepare_database():
         await conn.run_sync(Base.metadata.drop_all)
 
 
-async def _get_test_async_session():
+async def _get_test_async_session() -> AsyncGenerator[AsyncSession, Any]:
     try:
         # create async engine for interaction with test database
         test_engine = create_async_engine(

@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from sqlalchemy import select
 from sqlalchemy import update
@@ -21,7 +21,7 @@ logger = logging.getLogger("main_logger")
 class UserRepository:
     """Data Access Layer for operating user info"""
 
-    def __init__(self, db_session: AsyncSession):
+    def __init__(self, db_session: AsyncSession) -> None:
         self.db_session = db_session
         self.auth = AuthHandler()
 
@@ -108,5 +108,5 @@ class UserRepository:
             raise HTTPException(400, detail=error_handler("User with is email has already been registered. Try to register with another email"))
 
 
-def error_handler(message: str):
+def error_handler(message: str) -> Dict[str, str]:
     return {"error": message}

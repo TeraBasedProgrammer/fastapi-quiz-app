@@ -22,7 +22,7 @@ user_router = APIRouter(
 
 @user_router.get("/", response_model=Page[UserSchema])
 async def get_users(session: AsyncSession = Depends(get_async_session),
-                    params: Params = Depends()):
+                    params: Params = Depends()) -> Page[UserSchema]:
     logger.info("Getting all user from the database")
     crud = UserRepository(session)
     result = await crud.get_users() 
@@ -31,7 +31,7 @@ async def get_users(session: AsyncSession = Depends(get_async_session),
 
 
 @user_router.get("/{user_id}", response_model=Optional[UserSchema])
-async def get_user(user_id: int, session: AsyncSession = Depends(get_async_session)):
+async def get_user(user_id: int, session: AsyncSession = Depends(get_async_session)) -> Optional[UserSchema]:
     logger.info(f"Trying to get User instance by id '{user_id}'")
     crud = UserRepository(session)
     info = await crud.get_user_by_id(user_id)
@@ -43,7 +43,8 @@ async def get_user(user_id: int, session: AsyncSession = Depends(get_async_sessi
 
 
 @user_router.patch("/{user_id}/update", response_model=Optional[UserSchema])
-async def update_user(user_id: int, body: UserUpdateRequest, session: AsyncSession = Depends(get_async_session)) -> UserSchema:
+async def update_user(user_id: int, body: UserUpdateRequest, 
+                      session: AsyncSession = Depends(get_async_session)) -> Optional[UserSchema]:
     logger.info(f"Trying to update User instance '{user_id}'")
     crud = UserRepository(session)
     updated_user_params = body.model_dump(exclude_none=True)
@@ -68,7 +69,8 @@ async def update_user(user_id: int, body: UserUpdateRequest, session: AsyncSessi
 
 
 @user_router.delete("/{user_id}/delete", response_model=Optional[DeleteUserResponse])
-async def delete_user(user_id: int, session: AsyncSession = Depends(get_async_session)) -> DeleteUserResponse:
+async def delete_user(user_id: int, 
+                      session: AsyncSession = Depends(get_async_session)) -> DeleteUserResponse:
     logger.info(f"Trying to delete User instance '{user_id}'")
     crud = UserRepository(session)
     user_for_deletion = await crud.get_user_by_id(user_id)
