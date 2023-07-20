@@ -9,10 +9,8 @@ from sqlalchemy.exc import IntegrityError
 from app.database import get_async_session
 from .schemas import UserSchema, DeleteUserResponse, UserUpdateRequest
 from .services import UserRepository, error_handler
-from app.auth.handlers import AuthHandler
 
 
-auth_handler = AuthHandler()
 logger = logging.getLogger("main_logger")
 
 user_router = APIRouter(
@@ -31,16 +29,6 @@ async def get_users(session: AsyncSession = Depends(get_async_session),
     logger.info("All user have been successfully retrieved")
     return paginate(result, params)
 
-
-@user_router.get("/me", response_model=Optional[UserSchema])
-async def get_current_user(session: AsyncSession = Depends(get_async_session),
-                           auth=Depends(auth_handler.auth_wrapper)) -> UserSchema:
-    logger.info(f"Accessing current user info")
-    crud = UserRepository(session)
-    current_user = await crud.get_user_by_email(auth)
-    logger.info(f"Successfully returned current user ({auth}) info")
-    crud = UserRepository(session)
-    return current_user
 
 @user_router.get("/{user_id}", response_model=Optional[UserSchema])
 async def get_user(user_id: int, session: AsyncSession = Depends(get_async_session)):
@@ -92,6 +80,3 @@ async def delete_user(user_id: int, session: AsyncSession = Depends(get_async_se
     deleted_user_id = await crud.delete_user(user_id)
     logger.info(f"User {user_id} has been successfully deleted from the database")
     return DeleteUserResponse(deleted_user_id=deleted_user_id)
-
-
-

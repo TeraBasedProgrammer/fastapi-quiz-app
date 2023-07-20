@@ -18,9 +18,12 @@ T = TypeVar('T')
 class UserBase(BaseModel):
     email: EmailStr
     name: Optional[str]
+    auth0_registered: Optional[bool]
 
     @validator("name")
     def validate_name(cls, value):
+        if not value: 
+            return value
         if not re.compile(r"^[a-zA-Z\- ]+$").match(value):
             logger.warning(f"Validation error: 'name' field contains restricted characters")
             raise HTTPException(
@@ -41,6 +44,7 @@ class UserUpdateRequest(UserBase):
     name: Optional[str] = None
     email: Optional[EmailStr] = None
     password: Optional[str] = None
+    auth0_registered: Optional[bool] = None
 
     @validator("password")
     def validate_name(cls, value):

@@ -2,9 +2,7 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi_pagination import Page, Params, paginate
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.exc import IntegrityError
 
 from app.database import get_async_session
 from app.users.schemas import UserSchema
@@ -14,6 +12,7 @@ from app.users.services import UserRepository, error_handler
 
 
 logger = logging.getLogger("main_logger")
+auth_handler = AuthHandler()
 
 auth_router = APIRouter(
     tags=["auth"],
@@ -37,7 +36,6 @@ async def signup(user: UserSignUp, session: AsyncSession = Depends(get_async_ses
 @auth_router.post("/login")
 async def login(user: UserLogin, session: AsyncSession = Depends(get_async_session)):
     logger.info(f"Login attemp with email {user.email}")
-    auth_handler = AuthHandler()
 
     crud = UserRepository(session)
     user_existing_object = await crud.get_user_by_email(user.email)
@@ -53,3 +51,18 @@ async def login(user: UserLogin, session: AsyncSession = Depends(get_async_sessi
     logger.info(f"User {user.email} successfully logged in the system")
     auth_token = auth_handler.encode_token(user.email)
     return {"token": auth_token}
+
+
+@auth_router.get("/me", response_model=Optional[UserSchema])
+async def get_current_user(session: AsyncSession = Depends(get_async_session),
+                           auth=Depends(auth_handler.auth_wrapper)) -> UserSchema:
+    logger.info(f"Accessing current user info")
+    crud = UserRepository(session)
+
+    # Check if user was authenticated using Auth0 JWT
+    if auth['auth0']:
+        await crud.error_or_create(auth['email'])
+    current_user = await crud.get_user_by_email(auth['email'])
+    logger.info(f"Successfully returned current user ({auth}) info")
+    crud = UserRepository(session)
+    return current_user

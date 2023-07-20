@@ -1,5 +1,6 @@
 import re
 import logging
+from typing import Optional
 
 from fastapi import HTTPException
 from pydantic import BaseModel
@@ -12,6 +13,7 @@ logger = logging.getLogger("main_logger")
 
 class UserSignUp(UserBase):
     password: str
+    name: Optional[str] = None
 
     @validator("password")
     def validate_password(cls, value):
