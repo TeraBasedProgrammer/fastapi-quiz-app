@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from pydantic import EmailStr
 from pydantic import constr
 from pydantic import validator
-from typing import List, Optional, TypeVar, Generic
+from typing import Optional, TypeVar
 
 
 logger = logging.getLogger("main_logger")
@@ -18,9 +18,12 @@ T = TypeVar('T')
 class UserBase(BaseModel):
     email: EmailStr
     name: Optional[str]
+    auth0_registered: Optional[bool]
 
     @validator("name")
     def validate_name(cls, value):
+        if not value: 
+            return value
         if not re.compile(r"^[a-zA-Z\- ]+$").match(value):
             logger.warning(f"Validation error: 'name' field contains restricted characters")
             raise HTTPException(
@@ -37,23 +40,11 @@ class UserSchema(UserBase):
         from_attributes = True
 
 
-class UserCreate(UserBase):
-    password: str
-
-    @validator("password")
-    def validate_password(cls, value):
-        if not re.compile(r"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$").match(value):
-            logger.warning(f"Validation error: password doesn't match the pattern")
-            raise HTTPException(
-                status_code=400, detail="Password should contain at least eight characters, at least one letter and one number"
-            )
-        return value
-
-
 class UserUpdateRequest(UserBase):
     name: Optional[str] = None
     email: Optional[EmailStr] = None
     password: Optional[str] = None
+    auth0_registered: Optional[bool] = None
 
     @validator("password")
     def validate_name(cls, value):
@@ -62,11 +53,6 @@ class UserUpdateRequest(UserBase):
                 status_code=400, detail="Password should contain at least eight characters, at least one letter and one number"
             )
         return value
-
-
-class UserLogin(BaseModel):
-    email: str
-    password: str
 
 
 class DeleteUserResponse(BaseModel):

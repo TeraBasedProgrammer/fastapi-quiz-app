@@ -1,13 +1,13 @@
 import logging
-from typing import List, Optional
+from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi_pagination import Page, Params, paginate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
 from app.database import get_async_session
-from .schemas import UserSchema, UserCreate, DeleteUserResponse, UserUpdateRequest
+from .schemas import UserSchema, DeleteUserResponse, UserUpdateRequest
 from .services import UserRepository, error_handler
 
 
@@ -22,41 +22,29 @@ user_router = APIRouter(
 
 @user_router.get("/", response_model=Page[UserSchema])
 async def get_users(session: AsyncSession = Depends(get_async_session),
-                    params: Params = Depends()):
+                    params: Params = Depends()) -> Page[UserSchema]:
     logger.info("Getting all user from the database")
     crud = UserRepository(session)
     result = await crud.get_users() 
     logger.info("All user have been successfully retrieved")
-    return paginate(result)
+    return paginate(result, params)
 
 
 @user_router.get("/{user_id}", response_model=Optional[UserSchema])
-async def get_user(user_id: int, session: AsyncSession = Depends(get_async_session)):
+async def get_user(user_id: int, session: AsyncSession = Depends(get_async_session)) -> Optional[UserSchema]:
     logger.info(f"Trying to get User instance by id '{user_id}'")
     crud = UserRepository(session)
     info = await crud.get_user_by_id(user_id)
     if not info:
         logger.warning(f"User '{user_id}' is not found")
         raise HTTPException(404, error_handler("User is not found"))
-    logger.info(f"Successfully retrieved User instanc '{user_id}'")
+    logger.info(f"Successfully retrieved User instance '{user_id}'")
     return info
 
 
-@user_router.post("/", response_model=UserSchema)
-async def create_user(user: UserCreate, session: AsyncSession = Depends(get_async_session)):
-    logger.info(f"Trying to create new User instance")
-    crud = UserRepository(session)
-    user_existing_object = await crud.get_user_by_email(user.email)
-    if user_existing_object: 
-        logger.warning(f"Validation error: User with email '{user.email}' already exists")
-        raise HTTPException(400, detail=error_handler("User with this email already exists"))
-    result = await crud.create_user(user)
-    logger.info(f"New user instance has been successfully created")
-    return result
-
-
 @user_router.patch("/{user_id}/update", response_model=Optional[UserSchema])
-async def update_user(user_id: int, body: UserUpdateRequest, session: AsyncSession = Depends(get_async_session)) -> UserSchema:
+async def update_user(user_id: int, body: UserUpdateRequest, 
+                      session: AsyncSession = Depends(get_async_session)) -> Optional[UserSchema]:
     logger.info(f"Trying to update User instance '{user_id}'")
     crud = UserRepository(session)
     updated_user_params = body.model_dump(exclude_none=True)
@@ -81,7 +69,8 @@ async def update_user(user_id: int, body: UserUpdateRequest, session: AsyncSessi
 
 
 @user_router.delete("/{user_id}/delete", response_model=Optional[DeleteUserResponse])
-async def delete_user(user_id: int, session: AsyncSession = Depends(get_async_session)) -> DeleteUserResponse:
+async def delete_user(user_id: int, 
+                      session: AsyncSession = Depends(get_async_session)) -> DeleteUserResponse:
     logger.info(f"Trying to delete User instance '{user_id}'")
     crud = UserRepository(session)
     user_for_deletion = await crud.get_user_by_id(user_id)
