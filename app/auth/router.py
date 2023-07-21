@@ -61,5 +61,4 @@ async def get_current_user(session: AsyncSession = Depends(get_async_session),
 
     current_user = await crud.get_user_by_email(auth['email'])
     logger.info(f"Successfully returned current user ({auth['email']}) info")
-    crud = UserRepository(session)
     return current_user
