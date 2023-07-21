@@ -1,11 +1,13 @@
 from typing import Dict, Optional
-
-import jwt
-from fastapi import HTTPException, Security
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from passlib.context import CryptContext
 from datetime import datetime, timedelta
 
+import jwt
+from fastapi import HTTPException, Security, Depends
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from passlib.context import CryptContext
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.database import get_async_session
 from app.config import Settings, settings
 
 class VerifyAuth0Token():
@@ -82,5 +84,16 @@ class AuthHandler():
                 return decoded_data
             raise HTTPException(status_code=401, detail='Invalid token')
 
-    def auth_wrapper(self, auth: HTTPAuthorizationCredentials = Security(security)) -> Optional[Dict[str, bool]]:
-        return self.decode_token(auth.credentials)
+    async def auth_wrapper(self, session: AsyncSession = Depends(get_async_session), 
+                           auth: HTTPAuthorizationCredentials = Security(security)) -> Optional[Dict[str, bool]]:
+        # Check if there are no registered users to this email address
+
+        # Local import to avoid circular import error
+        from app.users.services import UserRepository
+        user_data = self.decode_token(auth.credentials)
+        
+        if user_data['auth0']:
+            crud = UserRepository(session)
+            await crud.error_or_create(user_data['email'])
+
+        return user_data

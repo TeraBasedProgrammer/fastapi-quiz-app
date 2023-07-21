@@ -7,11 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
 from app.database import get_async_session
+from app.auth.handlers import AuthHandler
 from .schemas import UserSchema, DeleteUserResponse, UserUpdateRequest
 from .services import UserRepository, error_handler
 
 
 logger = logging.getLogger("main_logger")
+auth_handler = AuthHandler()
 
 user_router = APIRouter(
     prefix="/users",
@@ -70,7 +72,8 @@ async def update_user(user_id: int, body: UserUpdateRequest,
 
 @user_router.delete("/{user_id}/delete", response_model=Optional[DeleteUserResponse])
 async def delete_user(user_id: int, 
-                      session: AsyncSession = Depends(get_async_session)) -> DeleteUserResponse:
+                      session: AsyncSession = Depends(get_async_session),
+                      auth=Depends(auth_handler.auth_wrapper)) -> DeleteUserResponse:
     logger.info(f"Trying to delete User instance '{user_id}'")
     crud = UserRepository(session)
     user_for_deletion = await crud.get_user_by_id(user_id)

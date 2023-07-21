@@ -24,6 +24,8 @@ class UserSignUp(UserBase):
             )
         return value
 
+class UserSignUpAuth0(UserSignUp):
+    auth0_registered: bool
 
 class UserLogin(BaseModel):
     email: str

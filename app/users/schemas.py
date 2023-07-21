@@ -5,20 +5,16 @@ from fastapi import HTTPException
 from datetime import datetime
 from pydantic import BaseModel
 from pydantic import EmailStr
-from pydantic import constr
 from pydantic import validator
-from typing import Optional, TypeVar
+from typing import Optional
 
 
 logger = logging.getLogger("main_logger")
-
-T = TypeVar('T')
 
 
 class UserBase(BaseModel):
     email: EmailStr
     name: Optional[str]
-    auth0_registered: Optional[bool]
 
     @validator("name")
     def validate_name(cls, value):
@@ -35,6 +31,7 @@ class UserBase(BaseModel):
 class UserSchema(UserBase):
     id: int
     registered_at: datetime
+    auth0_registered: Optional[bool] 
 
     class Config:
         from_attributes = True
@@ -44,7 +41,6 @@ class UserUpdateRequest(UserBase):
     name: Optional[str] = None
     email: Optional[EmailStr] = None
     password: Optional[str] = None
-    auth0_registered: Optional[bool] = None
 
     @validator("password")
     def validate_name(cls, value):
