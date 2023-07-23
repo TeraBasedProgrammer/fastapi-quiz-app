@@ -3,9 +3,9 @@ import logging
 
 from fastapi import HTTPException
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from pydantic import EmailStr
-from pydantic import validator
+from pydantic import field_validator
 from typing import Optional
 
 
@@ -16,7 +16,7 @@ class UserBase(BaseModel):
     email: EmailStr
     name: Optional[str]
 
-    @validator("name")
+    @field_validator("name")
     def validate_user_name(cls, value):
         if not value: 
             return value
@@ -42,7 +42,7 @@ class UserUpdateRequest(UserBase):
     email: Optional[EmailStr] = None        
     password: Optional[str] = None
     
-    @validator("password")
+    @field_validator("password")
     def validate_password(cls, value):
         if not re.compile(r"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$").match(value):
             raise HTTPException(
@@ -50,7 +50,7 @@ class UserUpdateRequest(UserBase):
             )
         return value
 
-    @validator("email")
+    @field_validator("email")
     def validate_email(cls, value):
         if value is not None:
             raise HTTPException(
