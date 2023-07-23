@@ -8,6 +8,7 @@ import pytest
 import httpx
 import asyncpg
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy import text
 from py_dotenv import read_dotenv
 
 from app.main import app
@@ -19,6 +20,9 @@ from auth.handlers import AuthHandler
 read_dotenv(os.path.join(Path(__file__).resolve().parent.parent, '.env'))
 
 DATABASE_URL: str = settings.test_database_url
+DB_TABLES = [
+    "users",
+]
 
 
 @pytest.fixture(scope="session")
@@ -28,14 +32,7 @@ def event_loop() -> Generator[asyncio.AbstractEventLoop, Any, Any]:
     loop.close()
 
 
-@pytest.fixture(scope="session", autouse=True)
-async def async_session_test() -> AsyncGenerator[AsyncSession, Any]:
-    engine = create_async_engine(DATABASE_URL, echo=True)
-    async_session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    yield async_session
-
-
-@pytest.fixture(scope='function', autouse=True)
+@pytest.fixture(scope='session', autouse=True)
 async def prepare_database() -> None:
     engine = create_async_engine(DATABASE_URL, echo=True)
     async with engine.begin() as conn:
@@ -43,6 +40,24 @@ async def prepare_database() -> None:
     yield
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+
+
+@pytest.fixture(scope="session")
+async def async_session_test():
+    engine = create_async_engine(DATABASE_URL, echo=True)
+    async_session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    yield async_session
+
+
+@pytest.fixture(scope="function", autouse=True)
+async def clean_tables(async_session_test):
+    """Clean data in all tables before running test function"""
+    async with async_session_test() as session:
+        async with session.begin():
+            for table_for_cleaning in DB_TABLES:
+                await session.execute(text(f"DELETE FROM {table_for_cleaning};"))
+                await session.execute(text(f"ALTER SEQUENCE users_id_seq RESTART WITH 1;"))
+
 
 
 async def _get_test_async_session() -> AsyncGenerator[AsyncSession, Any]:
@@ -78,6 +93,13 @@ async def asyncpg_pool() -> AsyncGenerator[asyncpg.pool.Pool, Any]:
     await pool.close() 
 
 
+# @pytest.fixture(scope="function", autouse=True)
+# async def clean_tables(asyncpg_pool) -> Awaitable[None]:
+#     async with asyncpg_pool.acquire() as connection:
+#         for table in DB_TABLES:
+#             await connection.execute("TRUNCATE TABLE %s;" % (table))
+
+
 @pytest.fixture
 async def get_user_by_id(asyncpg_pool) -> Awaitable[list]:
     async def get_user_by_id(user_id: str) -> list:
@@ -91,9 +113,9 @@ async def get_user_by_id(asyncpg_pool) -> Awaitable[list]:
 
 @pytest.fixture(scope='function')
 async def create_raw_user(asyncpg_pool) -> Awaitable[None]:
-    async def create_raw_user(email: str = "test@email.com", 
-                              name: str = "ilya",
-                              password: str = "password123") -> None:
+    async def create_raw_user(email: str, 
+                              name: str,
+                              password: str) -> None:
         auth = AuthHandler()
         hashed_password = auth.get_password_hash(password)
         async with asyncpg_pool.acquire() as connection:
@@ -103,4 +125,18 @@ async def create_raw_user(asyncpg_pool) -> Awaitable[None]:
             )
 
     return create_raw_user
+
+
+@pytest.fixture(scope="function") 
+async def create_user_instance(create_raw_user: Awaitable[None]) -> Awaitable[dict[str, Any]]:   
+    async def create_user_instance(email: str = "test@email.com", 
+                                   name: str = "ilya",
+                                   password: str = "password123") -> dict[str, Any]:
+        await create_raw_user(email=email, name=name, password=password)
+        return {
+            "email": email,
+            "name": name,
+            "password": password
+        }
+    return create_user_instance
         

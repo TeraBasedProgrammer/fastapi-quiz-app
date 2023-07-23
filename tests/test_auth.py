@@ -114,8 +114,8 @@ async def test_signup_duplicate(client: httpx.AsyncClient, create_raw_user: Awai
 
 
 # Login
-async def test_login(client:httpx.AsyncClient, create_raw_user: Awaitable[None]):
-    await create_raw_user()
+async def test_login(client:httpx.AsyncClient, create_user_instance: Awaitable[dict[str, Any]]):
+    user_data = await create_user_instance()
     creds = {
         "email": "test@email.com",
         "password": "password123"
@@ -141,10 +141,10 @@ async def test_login(client:httpx.AsyncClient, create_raw_user: Awaitable[None])
 )
 async def test_login_validation_error(
     client:httpx.AsyncClient, 
-    create_raw_user: Awaitable[None],
+    create_user_instance: Awaitable[dict[str, Any]],
     user_data: dict[str, Any],
     error_response: dict[str, str]):
-    await create_raw_user()
+    await create_user_instance()
 
     response = await client.post("/login", data=json.dumps(user_data))
     assert response.status_code == 400

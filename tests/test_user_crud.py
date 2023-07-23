@@ -13,15 +13,10 @@ async def test_get_users_empty(client: httpx.AsyncClient) -> None:
     assert response.json() == {"items":[],"total":0,"page":1,"size":50,"pages":0}
 
 
-async def test_get_users(client: httpx.AsyncClient, create_raw_user: Awaitable[None]) -> None:
-    # Instanciate user in the DB
-    user_data = {
-        "email": "test@email.com",
-        "name": "ilya",
-        "password": "password123",
-    }
+async def test_get_users(client: httpx.AsyncClient, create_user_instance: Awaitable[dict[str, any]]) -> None:
 
-    await create_raw_user(**user_data)    
+    # Instanciate user in the DB
+    user_data = await create_user_instance()
 
     response = await client.get("/users/")
     json_response = response.json()
@@ -54,18 +49,13 @@ async def test_get_users(client: httpx.AsyncClient, create_raw_user: Awaitable[N
 )
 async def test_get_users_paginated(
     client: httpx.AsyncClient, 
-    create_raw_user: Awaitable[None],
+    create_user_instance: Awaitable[dict[str, any]],
     page: int,
     size: int,
     items_is_not_empty: bool,
     total_expected: int, 
     pages_expected: int,
     ) -> None:
-    user1_data = {
-        "email": "test@email.com",
-        "name": "ilya",
-        "password": "password123",
-    }
 
     user2_data = {
         "email": "test2@email.com",
@@ -73,10 +63,9 @@ async def test_get_users_paginated(
         "password": "password123",
     }
 
-
-    # Instanciate a user in the DB
-    await create_raw_user(**user1_data)
-    await create_raw_user(**user2_data)
+    # Instanciate 2 users in the DB
+    await create_user_instance()
+    await create_user_instance(**user2_data)
 
     response = await client.get(f"/users/?page={page}&size={size}")
     json_response = response.json()
@@ -87,16 +76,11 @@ async def test_get_users_paginated(
     assert json_response["pages"] == pages_expected
     assert json_response["size"] == size    
 
-# Get single user
-async def test_get_user_by_id(client: httpx.AsyncClient, create_raw_user: Awaitable[None]) -> None:
-    user_data = {
-        "email": "test@email.com",
-        "name": "ilya",
-        "password": "password123",
-    }
 
+# Get single user
+async def test_get_user_by_id(client: httpx.AsyncClient, create_user_instance: Awaitable[dict[str, any]]) -> None:
     # Instanciate a user in the DB
-    await create_raw_user(**user_data)
+    user_data = await create_user_instance()
 
     response = await client.get("/users/1")
     assert response.status_code == 200
@@ -137,7 +121,6 @@ async def test_get_user_by_id(client: httpx.AsyncClient, create_raw_user: Awaita
 )
 async def test_get_user_by_id_validation(
         client: httpx.AsyncClient,
-        create_raw_user: Awaitable[None],
         user_id: int | Any,
         status_code: int,
         error_response: dict[str, Any]) -> None:
