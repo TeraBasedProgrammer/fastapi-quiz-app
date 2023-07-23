@@ -12,6 +12,6 @@ class User(Base):
     email = Column(String, nullable=False, unique=True)
     name = Column(String, nullable=True)
     registered_at = Column(TIMESTAMP, default=datetime.utcnow)
-    password: str = Column(String(length=1024), nullable=False)
+    password = Column(String(length=1024), nullable=False)
     auth0_registered = Column(Boolean, default=False, nullable=False)
 

@@ -39,10 +39,7 @@ class UserSchema(UserBase):
 
 class UserUpdateRequest(UserBase):
     name: Optional[str] = None
-    email: Optional[EmailStr] = None        # if value is not None:
-        #     raise HTTPException(
-        #         status_code=400, detail="You can't change the email"
-        #     )
+    email: Optional[EmailStr] = None        
     password: Optional[str] = None
     
     @validator("password")
