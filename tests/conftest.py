@@ -2,7 +2,7 @@ import asyncio
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, AsyncGenerator, Generator, Awaitable
+from typing import Any, AsyncGenerator, Generator, Awaitable, TypeAlias, Callable, Coroutine, Dict
 
 import pytest
 import httpx
@@ -18,6 +18,8 @@ from auth.handlers import AuthHandler
 
 # Activate venv
 read_dotenv(os.path.join(Path(__file__).resolve().parent.parent, '.env'))
+
+Jwt: TypeAlias = str
 
 DATABASE_URL: str = settings.test_database_url
 DB_TABLES = [
@@ -59,7 +61,6 @@ async def clean_tables(async_session_test):
                 await session.execute(text(f"ALTER SEQUENCE users_id_seq RESTART WITH 1;"))
 
 
-
 async def _get_test_async_session() -> AsyncGenerator[AsyncSession, Any]:
     try:
         # create async engine for interaction with test database
@@ -90,14 +91,7 @@ async def asyncpg_pool() -> AsyncGenerator[asyncpg.pool.Pool, Any]:
         "".join(DATABASE_URL.split("+asyncpg"))
     )
     yield pool
-    await pool.close() 
-
-
-# @pytest.fixture(scope="function", autouse=True)
-# async def clean_tables(asyncpg_pool) -> Awaitable[None]:
-#     async with asyncpg_pool.acquire() as connection:
-#         for table in DB_TABLES:
-#             await connection.execute("TRUNCATE TABLE %s;" % (table))
+    await pool.close()
 
 
 @pytest.fixture
@@ -108,28 +102,26 @@ async def get_user_by_id(asyncpg_pool) -> Awaitable[list]:
                 "SELECT * FROM users WHERE id = %s;" % user_id
             )
 
-    return get_user_by_id  
-    
+    return get_user_by_id
+
 
 @pytest.fixture(scope='function')
-async def create_raw_user(asyncpg_pool) -> Awaitable[None]:
-    async def create_raw_user(email: str, 
-                              name: str,
-                              password: str) -> None:
+async def create_raw_user(asyncpg_pool) -> Callable[[str, str, str], Awaitable[None]]:
+    async def create_raw_user(email: str, name: str, password: str) -> None:
         auth = AuthHandler()
         hashed_password = auth.get_password_hash(password)
         async with asyncpg_pool.acquire() as connection:
             return await connection.execute(
-                "INSERT INTO users (email, name, password, registered_at, auth0_registered) VALUES ('%s', '%s', '%s', '%s', '%s')" 
-                 % (email, name, hashed_password, datetime.utcnow(), False)
+                "INSERT INTO users (email, name, password, registered_at, auth0_registered) VALUES ('%s', '%s', '%s', '%s', '%s')"
+                % (email, name, hashed_password, datetime.utcnow(), False)
             )
 
     return create_raw_user
 
 
-@pytest.fixture(scope="function") 
-async def create_user_instance(create_raw_user: Awaitable[None]) -> Awaitable[dict[str, Any]]:   
-    async def create_user_instance(email: str = "test@email.com", 
+@pytest.fixture(scope="function")
+async def create_user_instance(create_raw_user) -> Callable[[str, str, str], Awaitable[dict[str, Any]]]:
+    async def create_user_instance(email: str = "test@email.com",
                                    name: str = "ilya",
                                    password: str = "password123") -> dict[str, Any]:
         await create_raw_user(email=email, name=name, password=password)
@@ -138,5 +130,16 @@ async def create_user_instance(create_raw_user: Awaitable[None]) -> Awaitable[di
             "name": name,
             "password": password
         }
+
     return create_user_instance
-        
+
+
+@pytest.fixture(scope="function")
+async def create_auth_jwt() -> Callable[[str], Awaitable[Jwt]]:
+    async def create_auth_jwt(user_email: str) -> Jwt:
+        auth = AuthHandler()
+        token = auth.encode_token(user_email)
+        print(token)
+        return token
+
+    return create_auth_jwt
