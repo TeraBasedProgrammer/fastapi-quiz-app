@@ -28,13 +28,13 @@ async def test_signup(client: httpx.AsyncClient,
     # Check if user was inserted into the database
     db_response = await get_user_by_id(1)
     assert len(db_response) == 1
-    user_from_db = dict(db_response[0])
+    user_from_db = db_response[0]
 
-    assert user_from_db["email"] == user_data["email"]
-    assert user_from_db["id"] == 1
-    assert user_from_db["name"] == user_data.get("name")
-    assert user_from_db["registered_at"].date() == datetime.utcnow().date()
-    assert auth.verify_password(user_data["password"], user_from_db["password"]) is True
+    assert user_from_db.email == user_data["email"]
+    assert user_from_db.id == 1
+    assert user_from_db.name == user_data.get("name")
+    assert user_from_db.registered_at.date() == datetime.utcnow().date()
+    assert auth.verify_password(user_data["password"], user_from_db.password) is True
 
     data = response.json()
     assert data["email"] == user_data["email"]

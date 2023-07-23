@@ -8,12 +8,13 @@ import pytest
 import httpx
 import asyncpg
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy import text
+from sqlalchemy import text, select
 from py_dotenv import read_dotenv
 
 from app.main import app
 from app.config import settings
 from app.database import get_async_session, Base
+from app.users.models import User
 from auth.handlers import AuthHandler
 
 # Activate venv
@@ -85,36 +86,32 @@ async def client() -> AsyncGenerator[httpx.AsyncClient, Any]:
         yield client
 
 
-@pytest.fixture(scope="session")
-async def asyncpg_pool() -> AsyncGenerator[asyncpg.pool.Pool, Any]:
-    pool = await asyncpg.create_pool(
-        "".join(DATABASE_URL.split("+asyncpg"))
-    )
-    yield pool
-    await pool.close()
-
-
 @pytest.fixture
-async def get_user_by_id(asyncpg_pool) -> Awaitable[list]:
+async def get_user_by_id(async_session_test) -> Callable[[str], Awaitable[list]]:
     async def get_user_by_id(user_id: str) -> list:
-        async with asyncpg_pool.acquire() as connection:
-            return await connection.fetch(
-                "SELECT * FROM users WHERE id = %s;" % user_id
-            )
+        async with async_session_test() as session:
+            result = await session.execute(select(User).filter(User.id == int(user_id)))
+            user = result.scalars().first()
+            return [user] if user else []
 
     return get_user_by_id
 
 
 @pytest.fixture(scope='function')
-async def create_raw_user(asyncpg_pool) -> Callable[[str, str, str], Awaitable[None]]:
+async def create_raw_user(async_session_test) -> Callable[[str, str, str], Awaitable[None]]:
     async def create_raw_user(email: str, name: str, password: str) -> None:
         auth = AuthHandler()
         hashed_password = auth.get_password_hash(password)
-        async with asyncpg_pool.acquire() as connection:
-            return await connection.execute(
-                "INSERT INTO users (email, name, password, registered_at, auth0_registered) VALUES ('%s', '%s', '%s', '%s', '%s')"
-                % (email, name, hashed_password, datetime.utcnow(), False)
-            )
+
+        async with async_session_test() as session:
+            user = User(
+                email=email,
+                password=hashed_password,
+                name=name,
+                registered_at=datetime.utcnow(),
+                auth0_registered=False)
+            session.add(user)
+            await session.commit()
 
     return create_raw_user
 
