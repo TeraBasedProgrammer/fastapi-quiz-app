@@ -17,7 +17,7 @@ class UserBase(BaseModel):
     name: Optional[str]
 
     @validator("name")
-    def validate_name(cls, value):
+    def validate_user_name(cls, value):
         if not value: 
             return value
         if not re.compile(r"^[a-zA-Z\- ]+$").match(value):
@@ -46,7 +46,7 @@ class UserUpdateRequest(UserBase):
     password: Optional[str] = None
     
     @validator("password")
-    def validate_name(cls, value):
+    def validate_password(cls, value):
         if not re.compile(r"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$").match(value):
             raise HTTPException(
                 status_code=400, detail="Password should contain at least eight characters, at least one letter and one number"
@@ -54,7 +54,7 @@ class UserUpdateRequest(UserBase):
         return value
 
     @validator("email")
-    def validate_name(cls, value):
+    def validate_email(cls, value):
         if value is not None:
             raise HTTPException(
                 status_code=400, detail="You can't change the email"
