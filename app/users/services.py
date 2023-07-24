@@ -12,7 +12,7 @@ from fastapi import HTTPException
 from app.users.models import User
 from .schemas import UserSchema, UserUpdateRequest
 from app.auth.handlers import AuthHandler
-from app.auth.schemas import UserSignUp
+from app.auth.schemas import UserSignUpAuth0
 
 
 logger = logging.getLogger("main_logger")
@@ -98,7 +98,7 @@ class UserRepository:
         user_existing_object = await self.get_user_by_email(user_email)
         if not user_existing_object:
             logger.info("User with provided email hasn't been registered yet, creating new instance")
-            await self.create_user(user_data=UserSignUp(email=user_email, password=f"pass{datetime.now().strftime('%Y%m%d%H%M%S')}", auth0_registered=True))
+            await self.create_user(user_data=UserSignUpAuth0(email=user_email, password=f"pass{datetime.now().strftime('%Y%m%d%H%M%S')}", auth0_registered=True))
             return
         if user_existing_object.auth0_registered:
             logger.info("User with provided email has been registered using Auth0, pass")

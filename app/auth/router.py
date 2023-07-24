@@ -59,10 +59,6 @@ async def get_current_user(session: AsyncSession = Depends(get_async_session),
     logger.info(f"Accessing current user info")
     crud = UserRepository(session)
 
-    # Check if user was authenticated using Auth0 JWT
-    if auth['auth0']:
-        await crud.error_or_create(auth['email'])
     current_user = await crud.get_user_by_email(auth['email'])
-    logger.info(f"Successfully returned current user ({auth}) info")
-    crud = UserRepository(session)
+    logger.info(f"Successfully returned current user ({auth['email']}) info")
     return current_user

@@ -5,23 +5,19 @@ from fastapi import HTTPException
 from datetime import datetime
 from pydantic import BaseModel
 from pydantic import EmailStr
-from pydantic import constr
-from pydantic import validator
-from typing import Optional, TypeVar
+from pydantic import field_validator
+from typing import Optional
 
 
 logger = logging.getLogger("main_logger")
-
-T = TypeVar('T')
 
 
 class UserBase(BaseModel):
     email: EmailStr
     name: Optional[str]
-    auth0_registered: Optional[bool]
 
-    @validator("name")
-    def validate_name(cls, value):
+    @field_validator("name")
+    def validate_user_name(cls, value):
         if not value: 
             return value
         if not re.compile(r"^[a-zA-Z\- ]+$").match(value):
@@ -35,6 +31,7 @@ class UserBase(BaseModel):
 class UserSchema(UserBase):
     id: int
     registered_at: datetime
+    auth0_registered: Optional[bool] 
 
     class Config:
         from_attributes = True
@@ -42,15 +39,22 @@ class UserSchema(UserBase):
 
 class UserUpdateRequest(UserBase):
     name: Optional[str] = None
-    email: Optional[EmailStr] = None
+    email: Optional[EmailStr] = None        
     password: Optional[str] = None
-    auth0_registered: Optional[bool] = None
-
-    @validator("password")
-    def validate_name(cls, value):
+    
+    @field_validator("password")
+    def validate_password(cls, value):
         if not re.compile(r"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$").match(value):
             raise HTTPException(
                 status_code=400, detail="Password should contain at least eight characters, at least one letter and one number"
+            )
+        return value
+
+    @field_validator("email")
+    def validate_email(cls, value):
+        if value is not None:
+            raise HTTPException(
+                status_code=400, detail="You can't change the email"
             )
         return value
 

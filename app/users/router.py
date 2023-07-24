@@ -7,11 +7,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
 from app.database import get_async_session
+from app.auth.handlers import AuthHandler
+from app.auth.services import confirm_current_user
 from .schemas import UserSchema, DeleteUserResponse, UserUpdateRequest
 from .services import UserRepository, error_handler
 
 
 logger = logging.getLogger("main_logger")
+auth_handler = AuthHandler()
 
 user_router = APIRouter(
     prefix="/users",
@@ -44,7 +47,8 @@ async def get_user(user_id: int, session: AsyncSession = Depends(get_async_sessi
 
 @user_router.patch("/{user_id}/update", response_model=Optional[UserSchema])
 async def update_user(user_id: int, body: UserUpdateRequest, 
-                      session: AsyncSession = Depends(get_async_session)) -> Optional[UserSchema]:
+                      session: AsyncSession = Depends(get_async_session),
+                      auth=Depends(auth_handler.auth_wrapper)) -> Optional[UserSchema]:
     logger.info(f"Trying to update User instance '{user_id}'")
     crud = UserRepository(session)
     updated_user_params = body.model_dump(exclude_none=True)
@@ -54,6 +58,7 @@ async def update_user(user_id: int, body: UserUpdateRequest,
             status_code=400,
             detail=error_handler("At least one parameter should be provided for user update query"),
         )
+    
     try:
         user_for_update = await crud.get_user_by_id(user_id)
         if not user_for_update:
@@ -61,6 +66,10 @@ async def update_user(user_id: int, body: UserUpdateRequest,
             raise HTTPException(
                 status_code=404, detail=error_handler("User is not found")
             )
+        
+        # Check persmissions
+        await confirm_current_user(crud, auth['email'], user_id)
+        
         logger.info(f"User {user_id} have been successfully updated")
         return await crud.update_user(user_id, body)
     except IntegrityError:
@@ -70,15 +79,22 @@ async def update_user(user_id: int, body: UserUpdateRequest,
 
 @user_router.delete("/{user_id}/delete", response_model=Optional[DeleteUserResponse])
 async def delete_user(user_id: int, 
-                      session: AsyncSession = Depends(get_async_session)) -> DeleteUserResponse:
+                      session: AsyncSession = Depends(get_async_session),
+                      auth=Depends(auth_handler.auth_wrapper)) -> DeleteUserResponse:
     logger.info(f"Trying to delete User instance '{user_id}'")
     crud = UserRepository(session)
+
+    # Check if user exists
     user_for_deletion = await crud.get_user_by_id(user_id)
     if not user_for_deletion:
         logger.warning(f"User '{user_id}' is not found")
         raise HTTPException(
             status_code=404, detail=error_handler("User is not found")
         )
+    
+    # Check persmissions
+    await confirm_current_user(crud, auth['email'], user_id)
+
     deleted_user_id = await crud.delete_user(user_id)
     logger.info(f"User {user_id} has been successfully deleted from the database")
     return DeleteUserResponse(deleted_user_id=deleted_user_id)
