@@ -1,15 +1,15 @@
 import logging
-from typing import Optional, Dict
+from typing import Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_async_session
 from app.users.schemas import UserSchema
-from .schemas import UserSignUp, UserLogin
-from .handlers import AuthHandler
 from app.users.services import UserRepository, error_handler
 
+from .handlers import AuthHandler
+from .schemas import UserLogin, UserSignUp
 
 logger = logging.getLogger("main_logger")
 auth_handler = AuthHandler()

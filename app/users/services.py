@@ -1,19 +1,17 @@
 import logging
 from datetime import datetime
-from typing import List, Optional, Dict
+from typing import Dict, List, Optional
 
-from sqlalchemy import select
-from sqlalchemy import update
-from sqlalchemy import delete
-from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import EmailStr
 from fastapi import HTTPException
+from pydantic import EmailStr
+from sqlalchemy import delete, select, update
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.users.models import User
-from .schemas import UserSchema, UserUpdateRequest
 from app.auth.handlers import AuthHandler
 from app.auth.schemas import UserSignUpAuth0
+from app.users.models import User
 
+from .schemas import UserSchema, UserUpdateRequest
 
 logger = logging.getLogger("main_logger")
 

@@ -1,13 +1,10 @@
-import re
 import logging
-
-from fastapi import HTTPException
+import re
 from datetime import datetime
-from pydantic import BaseModel
-from pydantic import EmailStr
-from pydantic import field_validator
 from typing import Optional
 
+from fastapi import HTTPException
+from pydantic import BaseModel, EmailStr, field_validator
 
 logger = logging.getLogger("main_logger")
 

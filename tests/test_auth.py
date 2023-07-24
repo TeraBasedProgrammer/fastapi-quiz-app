@@ -1,8 +1,7 @@
 import json
 from datetime import datetime
-from typing import Any
 # Temp solution:
-from typing import Callable
+from typing import Any, Callable
 
 import httpx
 import pytest

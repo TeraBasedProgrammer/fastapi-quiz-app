@@ -2,9 +2,7 @@ import logging
 
 from fastapi import HTTPException
 
-from app.users.services import UserRepository
-from app.users.services import error_handler
-
+from app.users.services import UserRepository, error_handler
 
 logger = logging.getLogger("main_logger")
 

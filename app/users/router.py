@@ -3,15 +3,15 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi_pagination import Page, Params, paginate
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_async_session
 from app.auth.handlers import AuthHandler
 from app.auth.services import confirm_current_user
-from .schemas import UserSchema, DeleteUserResponse, UserUpdateRequest
-from .services import UserRepository, error_handler
+from app.database import get_async_session
 
+from .schemas import DeleteUserResponse, UserSchema, UserUpdateRequest
+from .services import UserRepository, error_handler
 
 logger = logging.getLogger("main_logger")
 auth_handler = AuthHandler()
