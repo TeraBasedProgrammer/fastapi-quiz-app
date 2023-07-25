@@ -18,7 +18,7 @@ auth_handler = AuthHandler()
 
 user_router = APIRouter(
     prefix="/users",
-    tags=["users"],
+    tags=["Users"],
     responses={404: {"description": "Not found"}}
 )
 

@@ -12,6 +12,7 @@ from .auth.router import auth_router
 from .config import settings
 from .log_config import LOGGING_CONFIG
 from .users.router import user_router
+from .companies.router import company_router
 
 # Set up logging configuration 
 logging.config.dictConfig(LOGGING_CONFIG)
@@ -29,6 +30,7 @@ disable_installed_extensions_check()
 # App routers
 app.include_router(user_router)
 app.include_router(auth_router)
+app.include_router(company_router)
 
 origins = [
     "http://localhost:8000",

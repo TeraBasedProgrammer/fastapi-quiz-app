@@ -10,6 +10,7 @@ from alembic import context
 from app.database import Base
 from app.config import settings
 from app.users.models import User
+from app.companies.models import Company
 from dotenv import load_dotenv
 
 

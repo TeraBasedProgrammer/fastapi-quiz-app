@@ -15,7 +15,7 @@ logger = logging.getLogger("main_logger")
 auth_handler = AuthHandler()
 
 auth_router = APIRouter(
-    tags=["auth"],
+    tags=["Auth"],
     responses={404: {"description": "Not found"}}
 )
 
