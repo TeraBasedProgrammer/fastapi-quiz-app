@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.handlers import AuthHandler
 from app.auth.services import confirm_current_user
 from app.database import get_async_session
+from app.schemas import UserFullSchema
 
 from .schemas import DeleteUserResponse, UserSchema, UserUpdateRequest
 from .services import UserRepository, error_handler
@@ -23,9 +24,10 @@ user_router = APIRouter(
 )
 
 
-@user_router.get("/", response_model=Page[UserSchema])
+@user_router.get("/", response_model=Page[UserFullSchema], response_model_exclude={"role"},
+                 response_model_by_alias=False)
 async def get_users(session: AsyncSession = Depends(get_async_session),
-                    params: Params = Depends()) -> Page[UserSchema]:
+                    params: Params = Depends()) -> Page[UserFullSchema]:
     logger.info("Getting all user from the database")
     crud = UserRepository(session)
     result = await crud.get_users() 
@@ -33,7 +35,7 @@ async def get_users(session: AsyncSession = Depends(get_async_session),
     return paginate(result, params)
 
 
-@user_router.get("/{user_id}", response_model=Optional[UserSchema])
+@user_router.get("/{user_id}", response_model=Optional[UserSchema], response_model_exclude={"role"})
 async def get_user(user_id: int, session: AsyncSession = Depends(get_async_session)) -> Optional[UserSchema]:
     logger.info(f"Trying to get User instance by id '{user_id}'")
     crud = UserRepository(session)
@@ -45,7 +47,8 @@ async def get_user(user_id: int, session: AsyncSession = Depends(get_async_sessi
     return info
 
 
-@user_router.patch("/{user_id}/update", response_model=Optional[UserSchema])
+# Requires a refactor
+@user_router.patch("/{user_id}/update", response_model=Optional[UserSchema], response_model_exclude={"role"})
 async def update_user(user_id: int, body: UserUpdateRequest, 
                       session: AsyncSession = Depends(get_async_session),
                       auth=Depends(auth_handler.auth_wrapper)) -> Optional[UserSchema]:
@@ -77,7 +80,8 @@ async def update_user(user_id: int, body: UserUpdateRequest,
         raise HTTPException(400, detail=error_handler("User with this email already exists"))
 
 
-@user_router.delete("/{user_id}/delete", response_model=Optional[DeleteUserResponse])
+# Requires a refactor
+@user_router.delete("/{user_id}/delete", response_model=Optional[DeleteUserResponse], response_model_exclude={"role"})
 async def delete_user(user_id: int, 
                       session: AsyncSession = Depends(get_async_session),
                       auth=Depends(auth_handler.auth_wrapper)) -> DeleteUserResponse:

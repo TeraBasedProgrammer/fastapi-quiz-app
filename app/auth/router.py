@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_async_session
-from app.users.schemas import UserSchema
+from app.schemas import UserFullSchema
 from app.users.services import UserRepository, error_handler
 
 from .handlers import AuthHandler
@@ -20,8 +20,8 @@ auth_router = APIRouter(
 )
 
 
-@auth_router.post("/signup", response_model=Optional[UserSchema], status_code=201)
-async def signup(user: UserSignUp, session: AsyncSession = Depends(get_async_session)) -> Optional[UserSchema]:
+@auth_router.post("/signup", response_model=Optional[UserFullSchema], status_code=201, response_model_exclude={"role"})
+async def signup(user: UserSignUp, session: AsyncSession = Depends(get_async_session)) -> Optional[UserFullSchema]:
     logger.info(f"Trying to create new User instance")
     crud = UserRepository(session)
     user_existing_object = await crud.get_user_by_email(user.email)
@@ -53,9 +53,9 @@ async def login(user: UserLogin, session: AsyncSession = Depends(get_async_sessi
     return {"token": auth_token}
 
 
-@auth_router.get("/me", response_model=Optional[UserSchema])
+@auth_router.get("/me", response_model=Optional[UserFullSchema], response_model_exclude={"role"})
 async def get_current_user(session: AsyncSession = Depends(get_async_session),
-                           auth=Depends(auth_handler.auth_wrapper)) -> Optional[UserSchema]:
+                           auth=Depends(auth_handler.auth_wrapper)) -> Optional[UserFullSchema]:
     logger.info(f"Accessing current user info")
     crud = UserRepository(session)
 

@@ -9,10 +9,10 @@ from fastapi_pagination import add_pagination
 from fastapi_pagination.utils import disable_installed_extensions_check
 
 from .auth.router import auth_router
+from .companies.router import company_router
 from .config import settings
 from .log_config import LOGGING_CONFIG
 from .users.router import user_router
-from .companies.router import company_router
 
 # Set up logging configuration 
 logging.config.dictConfig(LOGGING_CONFIG)

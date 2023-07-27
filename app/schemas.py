@@ -1,23 +1,21 @@
-# from typing import List, Optional
-# from datetime import datetime
+from typing import List
 
-# from pydantic import BaseModel
-
-# from .companies.schemas import CompanyBase
-# from .users.schemas import UserBase
-
-# class UserSchema(UserBase):
-#     id: int
-#     registered_at: datetime
-#     auth0_registered: Optional[bool]
-#     # is_owner: Optional[bool]
-#     # companies: List[CompanyBase]
-
-#     class Config:
-#         from_attributes = True
-#         # populate_by_name = True
+from .companies.schemas import CompanySchema
+from .users.schemas import UserSchema
 
 
-# class CompanySchema(CompanyBase):
-#     users: List[UserBase]
+class UserFullSchema(UserSchema):
+    companies: List[CompanySchema] | None = None
+
+    class Config:
+        from_attributes = True
+        populate_by_name = True
+
+
+class CompanyFullSchema(CompanySchema):
+    users: List[UserSchema] | None  = None
+
+    class Config:
+        from_attributes = True
+        populate_by_name = True
 

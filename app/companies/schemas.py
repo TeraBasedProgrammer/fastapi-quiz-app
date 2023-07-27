@@ -1,10 +1,12 @@
 import logging
 import re
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import HTTPException
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
+
+from .models import RoleEnum
 
 logger = logging.getLogger("main_logger")
 
@@ -26,8 +28,13 @@ class CompanyBase(BaseModel):
         return value
 
 class CompanySchema(CompanyBase):
-    id: int
+    id: int = Field(alias="company_id")
     created_at: datetime
+    role: Optional[RoleEnum] = None
+
+    class Config:
+        from_attributes = True
+        populate_by_name = True
 
 
 class CompanyCreate(CompanyBase):
