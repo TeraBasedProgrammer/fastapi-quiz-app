@@ -29,6 +29,7 @@ async def test_get_users(client: httpx.AsyncClient, create_user_instance: Callab
     assert data["name"] == user_data["name"]
     assert data["id"] == 1
     assert data.get("password") is None
+    assert data["companies"] == []
     assert data["registered_at"].split("T")[0] == str(datetime.utcnow().date())
 
 
@@ -87,6 +88,7 @@ async def test_get_user_by_id(client: httpx.AsyncClient,
     assert data["email"] == user_data["email"]
     assert data["name"] == user_data["name"]
     assert data["id"] == 1
+    assert data["companies"] == []
     assert data.get("password") is None
     assert data["registered_at"].split("T")[0] == str(datetime.utcnow().date())
 
@@ -140,7 +142,7 @@ async def test_delete_user(client: httpx.AsyncClient,
     response = await client.delete("/users/1/delete", headers={"Authorization": f"Bearer {jwt}"})
 
     assert response.status_code == 200
-    assert response.json() == {"deleted_user_id": 1}
+    assert response.json() == {"deleted_instance_id": 1}
 
 
 async def test_delete_user_not_found(client: httpx.AsyncClient,
@@ -185,7 +187,7 @@ async def test_update_user(client: httpx.AsyncClient,
     (
         ({"name": "1231jnkdskjas"}, 400, {"detail": "Name should contain only english letters"}),
         ({"password": "short"}, 400, {"detail": "Password should contain at least eight characters, at least one letter and one number"}),
-        ({"email": "anotheremail@gmail.com"}, 400, {"detail": "You can't change the email"}),
+        ({"email": "anotheremail@gmail.com"}, 400, {"detail": "User email can't be changed, try again"}),
         ({}, 400, {"detail": {"error": "At least one parameter should be provided for user update query"}}),
     )
 )
@@ -202,6 +204,8 @@ async def test_update_user_validation(
     response = await client.patch("/users/1/update", headers={"Authorization": f"Bearer {jwt}"},
                                   data=json.dumps(update_data))
     assert response.status_code == status_code
+    print(response.json())
+    print(response_error)
     assert response.json() == response_error
 
 
