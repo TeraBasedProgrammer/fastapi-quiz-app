@@ -24,20 +24,14 @@ class Company(Base):
     is_hidden = Column(Boolean, default=False)
     created_at = Column(TIMESTAMP, default=datetime.utcnow())
     
-    users = relationship("User", secondary="company_user", back_populates="companies") 
-    user_association = relationship("CompanyUser", back_populates="company")
-
+    users = relationship("CompanyUser", back_populates="companies") 
 
 
 class CompanyUser(Base): 
     __tablename__ = "company_user"
     company_id = Column(ForeignKey('companies.id', ondelete="CASCADE"), primary_key=True)
     user_id = Column(ForeignKey('users.id', ondelete="CASCADE"), primary_key=True)
-    role = Column(Enum(RoleEnum), nullable=False)
+    role = Column(Enum(RoleEnum), nullable=False, default=RoleEnum.member)
 
-    user = relationship("User", back_populates="company_association") 
-    company = relationship("Company",  back_populates="user_association")
-
-    # # proxies
-    # user_email = association_proxy(target_collection='user', attr='email')
-    # company_title = association_proxy(target_collection='company', attr='title')
+    users = relationship("User", back_populates="companies", lazy='subquery') 
+    companies = relationship("Company",  back_populates="users", lazy='subquery')

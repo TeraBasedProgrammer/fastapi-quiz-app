@@ -19,19 +19,19 @@ class CompanyBase(BaseModel):
     def validate_company_title(cls, value):
         if len(value) > 100:
             logger.warning(f"Validation error: 'title' field contains too many characters")
-        if not re.compile(r"^[a-zA-Z\-. ]+$").match(value):
+        if not re.compile(r"^[a-zA-Z0-9\-. ]+$").match(value):
             logger.warning(f"Validation error: 'title' field contains restricted characters")
             raise HTTPException(
-                status_code=400, detail="Title should contain only english letters and special characters (.-)"
+                status_code=400, detail="Title may contain only english letters, numbers and special characters ('.', '-', ' ')"
             )
             
         return value
 
 class CompanySchema(CompanyBase):
-    id: int = Field(alias="company_id")
+    id: int 
     created_at: datetime
-    role: Optional[RoleEnum] = None
-
+    role: Optional[RoleEnum] = Field(None, nullable=True)
+    
     class Config:
         from_attributes = True
         populate_by_name = True
@@ -41,3 +41,8 @@ class CompanyCreate(CompanyBase):
     is_hidden: bool
 
 
+class CompanyUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    is_hidden: Optional[bool] = None
+    

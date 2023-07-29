@@ -61,7 +61,7 @@ class AuthHandler:
 
     def encode_token(self, user_email: str) -> str:
         payload = {
-            'exp': datetime.utcnow() + timedelta(days=0, minutes=10),
+            'exp': datetime.utcnow() + timedelta(days=0, minutes=60),
             'iat': datetime.utcnow(),
             'sub': user_email
         }

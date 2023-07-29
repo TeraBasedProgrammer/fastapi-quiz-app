@@ -164,7 +164,6 @@ async def test_delete_user_permission_error(client: httpx.AsyncClient,
     response = await client.delete("/users/1/delete", headers={"Authorization": f"Bearer {jwt}"})
 
     assert response.status_code == 403
-    print(response.json())
     assert response.json() == {'detail': {'error': 'Forbidden'}}
 
 
@@ -178,7 +177,6 @@ async def test_update_user(client: httpx.AsyncClient,
     update_data = {"name": "New Name"}
     response = await client.patch("/users/1/update", headers={"Authorization": f"Bearer {jwt}"},
                                   data=json.dumps(update_data))
-    print(response.json())
     assert response.status_code == 200
 
 
@@ -219,5 +217,4 @@ async def test_update_user_permission_error(client: httpx.AsyncClient,
                                   data=json.dumps({"name": "name"}))
 
     assert response.status_code == 403
-    print(response.json())
     assert response.json() == {'detail': {'error': 'Forbidden'}}

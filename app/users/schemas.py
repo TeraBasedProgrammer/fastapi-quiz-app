@@ -29,11 +29,11 @@ class UserBase(BaseModel):
 
 
 class UserSchema(UserBase):
-    id: int = Field(alias="user_id")
+    id: int
     registered_at: datetime
     auth0_registered: Optional[bool] 
-    role: Optional[RoleEnum] = None
-
+    role: Optional[RoleEnum] = Field(None, nullable=True)
+    
     class Config:
         from_attributes = True
         populate_by_name = True
@@ -56,10 +56,10 @@ class UserUpdateRequest(UserBase):
     def validate_email(cls, value):
         if value is not None:
             raise HTTPException(
-                status_code=400, detail="You can't change the email"
+                status_code=400, detail="User email can't be changed, try again"
             )
         return value
 
 
-class DeleteUserResponse(BaseModel):
-    deleted_user_id: int
+class DeletedInstanceResponse(BaseModel):
+    deleted_instance_id: int

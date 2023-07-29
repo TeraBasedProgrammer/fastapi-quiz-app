@@ -1,14 +1,19 @@
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, select, update, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import contains_eager, joinedload
+from pydantic import EmailStr
 
 from app.auth.handlers import AuthHandler
 from app.companies.models import Company
+from app.users.services import UserRepository
+from .schemas import CompanyCreate, CompanyUpdate
+from app.companies.models import CompanyUser
+from app.companies.models import RoleEnum
+from app.users.models import User
 
-from .schemas import CompanyCreate, CompanySchema
 
 logger = logging.getLogger("main_logger")
 
@@ -24,7 +29,7 @@ class CompanyRepository:
     async def get_companies(self) -> List[Company]:
         result = await self.db_session.execute(select(Company).options(joinedload(Company.users)))
         return result.unique().scalars().all()
-    
+        
     
     async def get_company_by_id(self, company_id) -> Optional[Company]:
         logger.debug(f"Received company id: '{company_id}'")
@@ -44,13 +49,53 @@ class CompanyRepository:
         return result
 
 
-    async def create_company(self, company_data: CompanyCreate) -> Company:
+    async def create_company(self, company_data: CompanyCreate, current_user_email: EmailStr) -> Dict[str, Any]:
         logger.debug(f"Received new company data: {company_data}")
+        # Initialize new company object
         new_company = Company(
            **company_data.model_dump() 
         )
         new_company.users = []
+
+        # Insert new company object into the db
         self.db_session.add(new_company)
         await self.db_session.commit()
-        logger.debug(f"Successfully inserted new company instance into the database")
-        return new_company
+
+        # Get current user
+        crud = UserRepository(self.db_session)
+        current_user = await crud.get_user_by_email(current_user_email)
+
+        # Initialize new m2m object for this company and its owner
+        company_user = CompanyUser(user_id=current_user.id, company_id=new_company.id, role=RoleEnum.owner)
+        self.db_session.add(company_user)
+        await self.db_session.commit()
+         
+        logger.debug(f"Successfully inserted new company instance with owner '{current_user_email}' into the database")
+        return {"id": new_company.id, "title": new_company.title}
+
+    async def update_company(self, company_id: int, company_data: CompanyUpdate) -> Optional[Company]:
+        logger.debug(f"Received company data: {company_data}")
+        query = (
+            update(Company)
+            .where(Company.id == company_id)
+            .values({key: value for key, value in company_data.model_dump().items() if value is not None})
+            .returning(Company)
+        )
+        res = await self.db_session.execute(query)
+        await self.db_session.commit()
+        logger.debug(f"Successfully updatetd company instance {company_id}")
+        return res.scalar_one()
+
+
+    async def delete_company(self, company_id: int) -> Optional[int]:
+        logger.debug(f"Received company id: '{company_id}'")
+        query = (
+            delete(Company)
+            .where(Company.id == company_id)
+            .returning(Company.id)
+        )
+
+        result = (await self.db_session.execute(query)).scalar_one()
+        await self.db_session.commit()
+        logger.debug(f"Successfully deleted company '{result}' from the database")
+        return result

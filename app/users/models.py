@@ -16,5 +16,7 @@ class User(Base):
     password = Column(String(length=1024), nullable=False)
     auth0_registered = Column(Boolean, default=False, nullable=False)
 
-    companies = relationship("Company", secondary="company_user", back_populates="users")
-    company_association = relationship("CompanyUser", back_populates="user")
+    companies = relationship("CompanyUser", back_populates="users")
+
+    def __repr__(self):
+        return f"User {self.email}"

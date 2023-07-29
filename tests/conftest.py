@@ -138,7 +138,6 @@ async def create_auth_jwt() -> Callable[[str], Awaitable[Jwt]]:
     async def create_auth_jwt(user_email: str) -> Jwt:
         auth = AuthHandler()
         token = auth.encode_token(user_email)
-        print(token)
         return token
 
     return create_auth_jwt

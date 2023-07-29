@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
 from fastapi import HTTPException
 from pydantic import EmailStr
@@ -26,7 +26,7 @@ class UserRepository:
         self.auth = AuthHandler()
 
 
-    async def create_user(self, user_data: UserSignUp, auth0: bool = False) -> User:
+    async def create_user(self, user_data: UserSignUp, auth0: bool = False) -> Dict[str, Any]:
         logger.debug(f"Received new user data: {user_data}")
         new_user = User(
            **user_data.model_dump() 
@@ -39,7 +39,7 @@ class UserRepository:
         self.db_session.add(new_user)
         await self.db_session.commit()
         logger.debug(f"Successfully inserted new user instance into the database")
-        return new_user
+        return {"id": new_user.id, "email": new_user.email}
 
 
     async def get_users(self) -> List[User]:
@@ -64,7 +64,6 @@ class UserRepository:
             logger.debug(f"Retrieved user by email '{email}': '{result.id}'")
         return result
 
-    # Requiers a refactor
     async def update_user(self, user_id: int, user_data:UserUpdateRequest) -> Optional[UserSchema]:
         logger.debug(f"Received user data: {user_data}")
         query = (
@@ -79,7 +78,6 @@ class UserRepository:
         return res.scalar_one()
 
 
-    # Requiers a refactor
     async def delete_user(self, user_id: int) -> Optional[int]:
         logger.debug(f"Received user id: '{user_id}'")
         query = (
