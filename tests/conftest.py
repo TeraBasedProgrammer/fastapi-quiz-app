@@ -2,15 +2,15 @@ import asyncio
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import (Any, AsyncGenerator, Awaitable, Callable, Coroutine, Dict,
-                    Generator, TypeAlias)
+from typing import (Any, AsyncGenerator, Awaitable, Callable,
+                    Generator, TypeAlias, Dict, Optional)
 
-import asyncpg
 import httpx
 import pytest
 from auth.handlers import AuthHandler
 from py_dotenv import read_dotenv
 from sqlalchemy import select, text
+from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import (AsyncSession, async_sessionmaker,
                                     create_async_engine)
 
@@ -18,6 +18,7 @@ from app.config import settings
 from app.database import Base, get_async_session
 from app.main import app
 from app.users.models import User
+from app.companies.models import Company, CompanyUser, RoleEnum
 
 # Activate venv
 read_dotenv(os.path.join(Path(__file__).resolve().parent.parent, '.env'))
@@ -25,9 +26,11 @@ read_dotenv(os.path.join(Path(__file__).resolve().parent.parent, '.env'))
 Jwt: TypeAlias = str
 
 DATABASE_URL: str = settings.test_database_url
-DB_TABLES = [
-    "users",
-]
+DB_TABLES: Dict[str, Optional[str]] = {
+    "users": "users_id_seq",
+    "companies": "companies_id_seq",
+    "company_user": None,
+}
 
 
 @pytest.fixture(scope="session")
@@ -59,9 +62,10 @@ async def clean_tables(async_session_test):
     """Clean data in all tables before running test function"""
     async with async_session_test() as session:
         async with session.begin():
-            for table_for_cleaning in DB_TABLES:
+            for table_for_cleaning, id_seq in DB_TABLES.items():
                 await session.execute(text(f"DELETE FROM {table_for_cleaning};"))
-                await session.execute(text(f"ALTER SEQUENCE users_id_seq RESTART WITH 1;"))
+                if id_seq:
+                    await session.execute(text(f"ALTER SEQUENCE {id_seq} RESTART WITH 1;"))
 
 
 async def _get_test_async_session() -> AsyncGenerator[AsyncSession, Any]:
@@ -92,10 +96,9 @@ async def client() -> AsyncGenerator[httpx.AsyncClient, Any]:
 async def get_user_by_id(async_session_test) -> Callable[[str], Awaitable[list]]:
     async def get_user_by_id(user_id: str) -> list:
         async with async_session_test() as session:
-            result = await session.execute(select(User).filter(User.id == int(user_id)))
-            user = result.scalars().first()
+            result = await session.execute(select(User).options(joinedload(User.companies)).where(User.id == user_id))
+            user = result.unique().scalar_one_or_none()
             return [user] if user else []
-
     return get_user_by_id
 
 
@@ -131,6 +134,49 @@ async def create_user_instance(create_raw_user) -> Callable[[str, str, str], Awa
         }
 
     return create_user_instance
+
+
+@pytest.fixture(scope='function')
+async def create_raw_company(async_session_test) -> Callable[[str, str, bool], Awaitable[None]]:
+    async def create_raw_company(title: str, description: str, is_hidden: bool) -> None:
+        async with async_session_test() as session:
+            company = Company(
+                title=title,
+                description=description,
+                is_hidden=is_hidden,
+                created_at=datetime.utcnow())
+            session.add(company)
+            await session.commit()
+    return create_raw_company
+
+
+@pytest.fixture(scope="function")
+async def create_company_instance(create_raw_company) -> Callable[[str, str, bool], Awaitable[dict[str, Any]]]:
+    async def create_company_instance(title: str = "MyCompany",
+                                   description: str = "Description",
+                                   is_hidden: bool = False) -> dict[str, Any]:
+        await create_raw_company(title=title, description=description, is_hidden=is_hidden)
+        return {
+            "title": title,
+            "description": description,
+            "is_hidden": is_hidden
+        }
+
+    return create_company_instance
+
+@pytest.fixture(scope="function")
+async def create_user_company_instance(async_session_test) -> Callable[[str, str, RoleEnum], Awaitable[None]]:
+    async def create_user_company_instance(user_id: int = 1, company_id: int = 1, role = RoleEnum.owner) -> None:
+        async with async_session_test() as session:
+            company_user = CompanyUser(
+                company_id=user_id,
+                user_id=company_id,
+                role=role
+            )
+            session.add(company_user)
+            await session.commit()
+    return create_user_company_instance
+
 
 
 @pytest.fixture(scope="function")

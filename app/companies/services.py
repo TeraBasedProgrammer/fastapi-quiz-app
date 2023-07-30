@@ -31,8 +31,6 @@ class CompanyRepository:
         
     
     async def get_company_by_id(self, company_id: int, current_user_email: EmailStr) -> Optional[Company]:
-        user_crud = UserRepository(self.db_session)
-
         logger.debug(f"Received company id: '{company_id}'")
         data = await self.db_session.execute(select(Company).options(joinedload(Company.users)).where(Company.id == company_id))
         result = data.unique().scalar_one_or_none()

@@ -107,7 +107,7 @@ async def delete_company(company_id: int,
     crud = CompanyRepository(session)
 
     # Check if company exists
-    company_for_deletion = await crud.get_company_by_id(company_id)
+    company_for_deletion = await crud.get_company_by_id(company_id, auth["email"])
     if not company_for_deletion:
         logger.warning(f"Company '{company_id}' is not found")
         raise HTTPException(

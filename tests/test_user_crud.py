@@ -222,3 +222,56 @@ async def test_update_user_permission_error(client: httpx.AsyncClient,
 
     assert response.status_code == 403
     assert response.json() == {'detail': {'error': 'Forbidden'}}
+
+
+async def test_user_with_company(client: httpx.AsyncClient,
+                                 create_user_instance: Callable[..., Any],
+                                 create_user_company_instance: Callable[..., Any],
+                                 create_company_instance: Callable[..., Any]) -> None:
+    # Initialize data
+    await create_company_instance()
+    await create_user_instance()
+    await create_user_company_instance()
+    
+    response = await client.get("/users/1")
+    assert response.status_code == 200
+    data = response.json()
+
+    companies = data["companies"]
+    assert len(companies) == 1
+    assert companies[0]["title"] == "MyCompany"
+    assert companies[0]["description"] == "Description"
+    assert companies[0].get("is_hidden") == None
+    assert companies[0]["created_at"].split("T")[0] == str(datetime.utcnow().date())
+    
+
+
+async def test_user_after_company_delete(client: httpx.AsyncClient,
+                                         create_auth_jwt: Callable[..., Any],                                         
+                                         create_user_instance: Callable[..., Any],                                         
+                                         create_user_company_instance: Callable[..., Any],                                         
+                                         create_company_instance: Callable[..., Any]) -> None:
+    # Initialize data
+    await create_company_instance()
+    await create_user_instance()
+    await create_user_company_instance()
+    
+    response_before = await client.get("/users/1")
+    assert response_before.status_code == 200
+    data_before = response_before.json()
+
+    # Check companies list before deleting the company
+    companies_before = data_before["companies"]
+    assert len(companies_before) == 1
+
+    token = await create_auth_jwt(data_before["email"])
+    response_delete = await client.delete("/companies/1/delete", headers={"Authorization": f"Bearer {token}"})
+    assert response_delete.json() == {"deleted_instance_id" : 1}
+
+    response_after = await client.get("/users/1")
+    assert response_after.status_code == 200
+    
+    # Check companies list after deleting the company
+    data_after = response_after.json()
+    companies_after = data_after["companies"]
+    assert len(companies_after) == 0
