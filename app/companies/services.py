@@ -70,7 +70,7 @@ class CompanyRepository:
         current_user = await crud.get_user_by_email(current_user_email)
 
         # Initialize new m2m object for this company and its owner
-        company_user = CompanyUser(user_id=current_user.id, company_id=new_company.id, role=RoleEnum.owner)
+        company_user = CompanyUser(user_id=current_user.id, company_id=new_company.id, role=RoleEnum.Owner)
         self.db_session.add(company_user)
         await self.db_session.commit()
          

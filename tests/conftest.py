@@ -180,7 +180,7 @@ async def create_company_instance(create_raw_company) -> Callable[[str, str, boo
 
 @pytest.fixture(scope="function")
 async def create_user_company_instance(async_session_test) -> Callable[[str, str, RoleEnum], Awaitable[None]]:
-    async def create_user_company_instance(user_id: int = 1, company_id: int = 1, role = RoleEnum.owner) -> None:
+    async def create_user_company_instance(user_id: int = 1, company_id: int = 1, role = RoleEnum.Owner) -> None:
         async with async_session_test() as session:
             company_user = CompanyUser(
                 company_id=user_id,

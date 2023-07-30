@@ -10,9 +10,9 @@ from app.database import Base
 
 
 class RoleEnum(enum.Enum):
-    owner = "owner"
-    admin = "admin"
-    member = "member"
+    Owner = "owner"
+    Admin = "admin"
+    Member = "member"
 
 
 class Company(Base):
@@ -31,7 +31,7 @@ class CompanyUser(Base):
     __tablename__ = "company_user"
     company_id = Column(ForeignKey('companies.id', ondelete="CASCADE"), primary_key=True)
     user_id = Column(ForeignKey('users.id', ondelete="CASCADE"), primary_key=True)
-    role = Column(Enum(RoleEnum), nullable=False, default=RoleEnum.member)
+    role = Column(Enum(RoleEnum), nullable=False, default=RoleEnum.Member)
 
     users = relationship("User", back_populates="companies", lazy='subquery') 
     companies = relationship("Company",  back_populates="users", lazy='subquery')
