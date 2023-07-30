@@ -28,10 +28,11 @@ company_router = APIRouter(
 
 @company_router.get("/", response_model=Page[CompanyFullSchema], response_model_exclude_none=True)
 async def get_all_companies(session: AsyncSession = Depends(get_async_session),
-                    params: Params = Depends()) -> Page[CompanyFullSchema]:
+                    params: Params = Depends(),
+                    auth=Depends(auth_handler.auth_wrapper)) -> Page[CompanyFullSchema]:
     logger.info("Getting all companies from the database")
-    crud = CompanyRepository(session)
-    result = await crud.get_companies() 
+    company_crud = CompanyRepository(session)
+    result = await company_crud.get_companies() 
     logger.info("All companies have been successfully retrieved")
 
     response = [CompanyFullSchema.from_model(c) for c in await filter_companies_response(result)]
@@ -44,8 +45,8 @@ async def get_company(company_id: int,
                       session: AsyncSession = Depends(get_async_session),
                       auth=Depends(auth_handler.auth_wrapper)) -> Optional[CompanyFullSchema]:
     logger.info(f"Trying to get Company instance by id '{company_id}'")
-    crud = CompanyRepository(session)
-    info = await crud.get_company_by_id(company_id, auth["email"])
+    company_crud = CompanyRepository(session)
+    info = await company_crud.get_company_by_id(company_id, auth["email"])
     if not info:
         logger.warning(f"Company '{company_id}' is not found")
         raise HTTPException(404, error_handler("Company is not found"))
@@ -58,12 +59,12 @@ async def create_company(company: CompanyCreate,
                          session: AsyncSession = Depends(get_async_session),
                          auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:
     logger.info(f"Trying to create new Company instance")
-    crud = CompanyRepository(session)
-    company_existing_object = await crud.get_company_by_title(company.title)
+    company_crud = CompanyRepository(session)
+    company_existing_object = await company_crud.get_company_by_title(company.title)
     if company_existing_object: 
         logger.warning(f"Validation error: Company with name '{company.title}' already exists")
         raise HTTPException(400, detail=error_handler("Company with this name already exists"))
-    result = await crud.create_company(company, auth['email'])
+    result = await company_crud.create_company(company, auth['email'])
     logger.info(f"New company instance has been successfully created")
     return result
 
@@ -73,7 +74,7 @@ async def update_company(company_id: int, body: CompanyUpdate,
                       session: AsyncSession = Depends(get_async_session),
                       auth=Depends(auth_handler.auth_wrapper)) -> Optional[CompanyFullSchema]:
     logger.info(f"Trying to update Company instance '{company_id}'")
-    crud = CompanyRepository(session)
+    company_crud = CompanyRepository(session)
     updated_user_params = body.model_dump(exclude_none=True)
     if updated_user_params == {}:
         logger.warning("Validation error: No parameters have been provided")
@@ -82,7 +83,7 @@ async def update_company(company_id: int, body: CompanyUpdate,
             detail=error_handler("At least one parameter should be provided for user update query"),
         )
     try: 
-        company_for_update = await crud.get_company_by_id(company_id, auth["email"])
+        company_for_update = await company_crud.get_company_by_id(company_id, auth["email"])
         if not company_for_update:
             logger.warning(f"Company '{company_id}' is not found")
             raise HTTPException(
@@ -93,7 +94,7 @@ async def update_company(company_id: int, body: CompanyUpdate,
         await confirm_company_owner(company_for_update, auth['email'])
         
         logger.info(f"Company {company_id} have been successfully updated")
-        return CompanyFullSchema.from_model(await crud.update_company(company_id, body))
+        return CompanyFullSchema.from_model(await company_crud.update_company(company_id, body))
     except IntegrityError:
         logger.warning(f"Validation error: Company with provided title already exists")
         raise HTTPException(400, detail=error_handler("Company with this title already exists"))
@@ -104,10 +105,10 @@ async def delete_company(company_id: int,
                       session: AsyncSession = Depends(get_async_session),
                       auth=Depends(auth_handler.auth_wrapper)) -> DeletedInstanceResponse:
     logger.info(f"Trying to delete Company instance '{company_id}'")
-    crud = CompanyRepository(session)
+    company_crud = CompanyRepository(session)
 
     # Check if company exists
-    company_for_deletion = await crud.get_company_by_id(company_id, auth["email"])
+    company_for_deletion = await company_crud.get_company_by_id(company_id, auth["email"])
     if not company_for_deletion:
         logger.warning(f"Company '{company_id}' is not found")
         raise HTTPException(
@@ -117,7 +118,7 @@ async def delete_company(company_id: int,
     # Check persmissions
     await confirm_company_owner(company_for_deletion, auth['email'])
 
-    deleted_company_id = await crud.delete_company(company_id)
+    deleted_company_id = await company_crud.delete_company(company_id)
     logger.info(f"Company {company_id} has been successfully deleted from the database")
     return DeletedInstanceResponse(deleted_instance_id=deleted_company_id)
 

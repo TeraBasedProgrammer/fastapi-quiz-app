@@ -12,13 +12,11 @@ logger = logging.getLogger("main_logger")
 
 
 class CompanyBase(BaseModel):
-    title: str
+    title: str = Field(max_length=100)
     description: str
 
     @field_validator("title")
     def validate_company_title(cls, value):
-        if len(value) > 100:
-            logger.warning(f"Validation error: 'title' field contains too many characters")
         if not re.compile(r"^[a-zA-Z0-9\-. ]+$").match(value):
             logger.warning(f"Validation error: 'title' field contains restricted characters")
             raise HTTPException(

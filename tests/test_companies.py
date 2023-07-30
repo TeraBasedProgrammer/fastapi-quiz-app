@@ -8,16 +8,24 @@ import pytest
 from .conftest import DEFAULT_COMPANY_DATA, DEFAULT_USER_DATA
 
 
-async def test_get_companies_empty(client: httpx.AsyncClient) -> None:
-    response = await client.get("/companies/")
+async def test_get_companies_empty(client: httpx.AsyncClient,
+                                   create_auth_jwt: Callable[..., Any],
+                                   create_user_instance: Callable[..., Any]) -> None:
+    await create_user_instance()
+    token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
+
+    response = await client.get("/companies/", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 200
     assert response.json() == {"items": [], "total": 0, "page": 1, "size": 50, "pages": 0}
 
 
-async def test_get_companies(client: httpx.AsyncClient, create_default_company_object: Callable[..., Any]) -> None:
+async def test_get_companies(client: httpx.AsyncClient, 
+                             create_default_company_object: Callable[..., Any],
+                             create_auth_jwt: Callable[..., Any]) -> None:
     await create_default_company_object()
+    token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
 
-    response = await client.get("/companies/")
+    response = await client.get("/companies/", headers={"Authorization": f"Bearer {token}"})
     json_response = response.json()
 
     assert response.status_code == 200
@@ -40,14 +48,16 @@ async def test_get_companies(client: httpx.AsyncClient, create_default_company_o
 
 async def test_get_companies_hidden(client: httpx.AsyncClient, 
                                     create_default_company_object: Callable[..., Any],
+                                    create_auth_jwt: Callable[..., Any],
                                     create_company_instance: Callable[..., Any]) -> None:
     await create_default_company_object()
+    token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
 
     # Create additional hidden companies
     await create_company_instance(title="hiddenCompany", is_hidden=True)
     await create_company_instance(title="secondHiddenCompany", is_hidden=True)
 
-    response = await client.get("/companies/")
+    response = await client.get("/companies/", headers={"Authorization": f"Bearer {token}"})
     json_response = response.json()
 
     assert response.status_code == 200
@@ -77,13 +87,15 @@ async def test_get_companies_paginated(
         total_expected: int,
         pages_expected: int,
         create_default_company_object: Callable[..., Any],
-        create_company_instance: Callable[..., Any]) -> None:
+        create_company_instance: Callable[..., Any],
+        create_auth_jwt: Callable[..., Any]) -> None:
     await create_default_company_object()
+    token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
 
     # Create additional company
     await create_company_instance(title="Company", is_hidden=False)
 
-    response = await client.get(f"/companies/?page={page}&size={size}")
+    response = await client.get(f"/companies/?page={page}&size={size}", headers={"Authorization": f"Bearer {token}"})
     json_response = response.json()
 
     assert response.status_code == 200

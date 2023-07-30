@@ -26,7 +26,8 @@ user_router = APIRouter(
 
 @user_router.get("/", response_model=Page[UserFullSchema], response_model_exclude_none=True)
 async def get_users(session: AsyncSession = Depends(get_async_session),
-                    params: Params = Depends()) -> Page[UserFullSchema]:
+                    params: Params = Depends(),
+                    auth=Depends(auth_handler.auth_wrapper)) -> Page[UserFullSchema]:
     logger.info("Getting all user from the database")
     crud = UserRepository(session)
     result = await crud.get_users() 
@@ -38,7 +39,9 @@ async def get_users(session: AsyncSession = Depends(get_async_session),
 
 
 @user_router.get("/{user_id}", response_model=Optional[UserFullSchema], response_model_exclude_none=True)
-async def get_user(user_id: int, session: AsyncSession = Depends(get_async_session)) -> Optional[UserSchema]:
+async def get_user(user_id: int, 
+                   session: AsyncSession = Depends(get_async_session),
+                   auth=Depends(auth_handler.auth_wrapper)) -> Optional[UserSchema]:
     logger.info(f"Trying to get User instance by id '{user_id}'")
     crud = UserRepository(session)
     info = await crud.get_user_by_id(user_id)
