@@ -8,7 +8,7 @@ class UserFullSchema(UserSchema):
     companies: Optional[List[CompanySchema]] = []
      
     @classmethod
-    def from_model(cls, user_model):
+    def from_model(cls, user_model, public_request=True):
         return cls(
             id=user_model.id,
             name=user_model.name,
@@ -23,19 +23,20 @@ class UserFullSchema(UserSchema):
                     created_at=company.companies.created_at,
                     role=company.role,
                 )
-                for company in user_model.companies
+                for company in user_model.companies 
+                if not company.companies.is_hidden or public_request == False
             ]
         )
-
-    class Config:
-        from_attributes = True
 
 
 class CompanyFullSchema(CompanySchema):
     users: Optional[List[UserSchema]] = []
 
     @classmethod
-    def from_model(cls, company_model):
+    def from_model(cls, company_model, public_request=True):
+        if company_model.is_hidden and public_request:
+            return []
+        
         return cls(
             id=company_model.id,
             title=company_model.title,

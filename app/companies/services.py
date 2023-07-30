@@ -1,19 +1,18 @@
 import logging
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
-from sqlalchemy import delete, select, update, text
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import contains_eager, joinedload
 from pydantic import EmailStr
+from sqlalchemy import delete, select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from app.auth.handlers import AuthHandler
-from app.companies.models import Company
-from app.users.services import UserRepository
-from .schemas import CompanyCreate, CompanyUpdate
-from app.companies.models import CompanyUser
-from app.companies.models import RoleEnum
+from app.companies.models import Company, CompanyUser, RoleEnum
 from app.users.models import User
+from app.users.services import UserRepository
 
+from .schemas import CompanyCreate, CompanyUpdate
+from .utils import confirm_company_owner
 
 logger = logging.getLogger("main_logger")
 
@@ -31,12 +30,19 @@ class CompanyRepository:
         return result.unique().scalars().all()
         
     
-    async def get_company_by_id(self, company_id) -> Optional[Company]:
+    async def get_company_by_id(self, company_id: int, current_user_email: EmailStr) -> Optional[Company]:
+        user_crud = UserRepository(self.db_session)
+
         logger.debug(f"Received company id: '{company_id}'")
         data = await self.db_session.execute(select(Company).options(joinedload(Company.users)).where(Company.id == company_id))
         result = data.unique().scalar_one_or_none()
         if result:
             logger.debug(f"Retrieved company by id '{company_id}': {result.title}")
+
+            # Check permissions (validate if user is the owner of retrieved company)
+            if result.is_hidden:
+                await confirm_company_owner(result, current_user_email)
+
         return result 
 
 

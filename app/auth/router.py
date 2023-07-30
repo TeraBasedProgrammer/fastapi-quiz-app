@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Optional, Any
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -61,4 +61,4 @@ async def get_current_user(session: AsyncSession = Depends(get_async_session),
 
     current_user = await crud.get_user_by_email(auth['email'])
     logger.info(f"Successfully returned current user ({auth['email']}) info")
-    return UserFullSchema.from_model(current_user)
+    return UserFullSchema.from_model(current_user, public_request=False)

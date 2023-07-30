@@ -1,20 +1,20 @@
 import logging
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi_pagination import Page, Params, paginate
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.handlers import AuthHandler
 from app.database import get_async_session
 from app.schemas import CompanyFullSchema
+from app.users.schemas import DeletedInstanceResponse
 from app.users.services import error_handler
 
 from .schemas import CompanyCreate, CompanyUpdate
 from .services import CompanyRepository
-from .utils import confirm_company_owner
-from app.users.schemas import DeletedInstanceResponse
+from .utils import confirm_company_owner, filter_companies_response
 
 logger = logging.getLogger("main_logger")
 auth_handler = AuthHandler()
@@ -34,20 +34,23 @@ async def get_all_companies(session: AsyncSession = Depends(get_async_session),
     result = await crud.get_companies() 
     logger.info("All companies have been successfully retrieved")
 
-    response = [CompanyFullSchema.from_model(c) for c in result]
+    response = [CompanyFullSchema.from_model(c) for c in await filter_companies_response(result)]
     return paginate(response, params)
 
 
+# Fix response validation error
 @company_router.get("/{company_id}", response_model=Optional[CompanyFullSchema], response_model_exclude_none=True)
-async def get_company(company_id: int, session: AsyncSession = Depends(get_async_session)) -> Optional[CompanyFullSchema]:
+async def get_company(company_id: int, 
+                      session: AsyncSession = Depends(get_async_session),
+                      auth=Depends(auth_handler.auth_wrapper)) -> Optional[CompanyFullSchema]:
     logger.info(f"Trying to get Company instance by id '{company_id}'")
     crud = CompanyRepository(session)
-    info = await crud.get_company_by_id(company_id)
+    info = await crud.get_company_by_id(company_id, auth["email"])
     if not info:
         logger.warning(f"Company '{company_id}' is not found")
         raise HTTPException(404, error_handler("Company is not found"))
     logger.info(f"Successfully retrieved Company instance '{company_id}'")
-    return CompanyFullSchema.from_model(info)
+    return CompanyFullSchema.from_model(info, public_request=False)
 
 
 @company_router.post("/", response_model=Optional[Dict[str, Any]], status_code=201, response_model_exclude_none=True)
@@ -96,7 +99,6 @@ async def update_company(company_id: int, body: CompanyUpdate,
         raise HTTPException(400, detail=error_handler("Company with this title already exists"))
 
 
-# Requires a refactor
 @company_router.delete("/{company_id}/delete", response_model=Optional[DeletedInstanceResponse], response_model_exclude_none=True)
 async def delete_company(company_id: int, 
                       session: AsyncSession = Depends(get_async_session),
