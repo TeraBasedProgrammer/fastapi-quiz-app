@@ -82,7 +82,7 @@ async def update_company(company_id: int, body: CompanyUpdate,
             detail=error_handler("At least one parameter should be provided for user update query"),
         )
     try: 
-        company_for_update = await crud.get_company_by_id(company_id)
+        company_for_update = await crud.get_company_by_id(company_id, auth["email"])
         if not company_for_update:
             logger.warning(f"Company '{company_id}' is not found")
             raise HTTPException(

@@ -20,7 +20,7 @@ auth_router = APIRouter(
 )
 
 
-@auth_router.post("/signup", response_model=Optional[Dict[str, Any]], status_code=201, response_model_exclude={"role"})
+@auth_router.post("/signup", response_model=Optional[Dict[str, Any]], status_code=201)
 async def signup(user: UserSignUp, session: AsyncSession = Depends(get_async_session)) -> Optional[Dict[str, str]]:
     logger.info(f"Trying to create new User instance")
     crud = UserRepository(session)

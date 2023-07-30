@@ -32,6 +32,20 @@ DB_TABLES: Dict[str, Optional[str]] = {
     "company_user": None,
 }
 
+DEFAULT_USER_DATA = {
+    "id": 1,
+    "email": "test@email.com",
+    "name": "ilya",
+    "password": "password123"
+}
+
+DEFAULT_COMPANY_DATA = {
+    "id": 1,
+    "title": "MyCompany",
+    "description": "Description",
+    "is_hidden": False
+}
+
 
 @pytest.fixture(scope="session")
 def event_loop() -> Generator[asyncio.AbstractEventLoop, Any, Any]:
@@ -123,9 +137,9 @@ async def create_raw_user(async_session_test) -> Callable[[str, str, str], Await
 
 @pytest.fixture(scope="function")
 async def create_user_instance(create_raw_user) -> Callable[[str, str, str], Awaitable[dict[str, Any]]]:
-    async def create_user_instance(email: str = "test@email.com",
-                                   name: str = "ilya",
-                                   password: str = "password123") -> dict[str, Any]:
+    async def create_user_instance(email: str = DEFAULT_USER_DATA["email"],
+                                   name: str = DEFAULT_USER_DATA["name"],
+                                   password: str = DEFAULT_USER_DATA["password"]) -> dict[str, Any]:
         await create_raw_user(email=email, name=name, password=password)
         return {
             "email": email,
@@ -152,9 +166,9 @@ async def create_raw_company(async_session_test) -> Callable[[str, str, bool], A
 
 @pytest.fixture(scope="function")
 async def create_company_instance(create_raw_company) -> Callable[[str, str, bool], Awaitable[dict[str, Any]]]:
-    async def create_company_instance(title: str = "MyCompany",
-                                   description: str = "Description",
-                                   is_hidden: bool = False) -> dict[str, Any]:
+    async def create_company_instance(title: str = DEFAULT_COMPANY_DATA["title"],
+                                   description: str = DEFAULT_COMPANY_DATA["description"],
+                                   is_hidden: bool = DEFAULT_COMPANY_DATA["is_hidden"]) -> dict[str, Any]:
         await create_raw_company(title=title, description=description, is_hidden=is_hidden)
         return {
             "title": title,
@@ -177,6 +191,16 @@ async def create_user_company_instance(async_session_test) -> Callable[[str, str
             await session.commit()
     return create_user_company_instance
 
+
+@pytest.fixture(scope="function")
+async def create_default_company_object(create_company_instance,
+                                        create_user_instance,
+                                        create_user_company_instance) -> Callable[[None], Awaitable[None]]:
+    async def create_default_company_object() -> None:
+        await create_company_instance()
+        await create_user_instance()
+        await create_user_company_instance()
+    return create_default_company_object
 
 
 @pytest.fixture(scope="function")

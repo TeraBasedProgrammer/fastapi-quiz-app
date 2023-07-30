@@ -225,13 +225,9 @@ async def test_update_user_permission_error(client: httpx.AsyncClient,
 
 
 async def test_user_with_company(client: httpx.AsyncClient,
-                                 create_user_instance: Callable[..., Any],
-                                 create_user_company_instance: Callable[..., Any],
-                                 create_company_instance: Callable[..., Any]) -> None:
+                                 create_default_company_object: Callable[..., Any]) -> None:
     # Initialize data
-    await create_company_instance()
-    await create_user_instance()
-    await create_user_company_instance()
+    await create_default_company_object()
     
     response = await client.get("/users/1")
     assert response.status_code == 200
@@ -248,13 +244,9 @@ async def test_user_with_company(client: httpx.AsyncClient,
 
 async def test_user_after_company_delete(client: httpx.AsyncClient,
                                          create_auth_jwt: Callable[..., Any],                                         
-                                         create_user_instance: Callable[..., Any],                                         
-                                         create_user_company_instance: Callable[..., Any],                                         
-                                         create_company_instance: Callable[..., Any]) -> None:
+                                         create_default_company_object: Callable[..., Any]) -> None:
     # Initialize data
-    await create_company_instance()
-    await create_user_instance()
-    await create_user_company_instance()
+    await create_default_company_object()
     
     response_before = await client.get("/users/1")
     assert response_before.status_code == 200
