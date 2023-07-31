@@ -1,10 +1,9 @@
-import re
 import logging
+import re
 from typing import Optional
 
 from fastapi import HTTPException
-from pydantic import BaseModel
-from pydantic import field_validator
+from pydantic import BaseModel, field_validator
 
 from app.users.schemas import UserBase
 

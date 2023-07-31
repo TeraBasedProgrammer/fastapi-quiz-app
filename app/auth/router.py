@@ -1,27 +1,27 @@
 import logging
-from typing import Optional, Dict
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_async_session
-from app.users.schemas import UserSchema
-from .schemas import UserSignUp, UserLogin
-from .handlers import AuthHandler
+from app.schemas import UserFullSchema
 from app.users.services import UserRepository, error_handler
 
+from .handlers import AuthHandler
+from .schemas import UserLogin, UserSignUp
 
 logger = logging.getLogger("main_logger")
 auth_handler = AuthHandler()
 
 auth_router = APIRouter(
-    tags=["auth"],
+    tags=["Auth"],
     responses={404: {"description": "Not found"}}
 )
 
 
-@auth_router.post("/signup", response_model=Optional[UserSchema], status_code=201)
-async def signup(user: UserSignUp, session: AsyncSession = Depends(get_async_session)) -> Optional[UserSchema]:
+@auth_router.post("/signup", response_model=Optional[Dict[str, Any]], status_code=201)
+async def signup(user: UserSignUp, session: AsyncSession = Depends(get_async_session)) -> Optional[Dict[str, str]]:
     logger.info(f"Trying to create new User instance")
     crud = UserRepository(session)
     user_existing_object = await crud.get_user_by_email(user.email)
@@ -53,12 +53,12 @@ async def login(user: UserLogin, session: AsyncSession = Depends(get_async_sessi
     return {"token": auth_token}
 
 
-@auth_router.get("/me", response_model=Optional[UserSchema])
+@auth_router.get("/me", response_model=Optional[UserFullSchema], response_model_exclude={"role"})
 async def get_current_user(session: AsyncSession = Depends(get_async_session),
-                           auth=Depends(auth_handler.auth_wrapper)) -> Optional[UserSchema]:
+                           auth=Depends(auth_handler.auth_wrapper)) -> Optional[UserFullSchema]:
     logger.info(f"Accessing current user info")
     crud = UserRepository(session)
 
     current_user = await crud.get_user_by_email(auth['email'])
     logger.info(f"Successfully returned current user ({auth['email']}) info")
-    return current_user
+    return UserFullSchema.from_model(current_user, public_request=False)

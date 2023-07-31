@@ -5,19 +5,18 @@ from typing import Any, Callable
 import httpx
 import pytest
 
+from .conftest import DEFAULT_COMPANY_DATA, DEFAULT_USER_DATA
+
 
 # Get all users
-async def test_get_users_empty(client: httpx.AsyncClient) -> None:
-    response = await client.get("/users/")
-    assert response.status_code == 200
-    assert response.json() == {"items": [], "total": 0, "page": 1, "size": 50, "pages": 0}
-
-
-async def test_get_users(client: httpx.AsyncClient, create_user_instance: Callable[..., Any]) -> None:
+async def test_get_users(client: httpx.AsyncClient,
+                         create_user_instance: Callable[..., Any],
+                         create_auth_jwt: Callable[..., Any],) -> None:
     # Instantiate user in the DB
     user_data = await create_user_instance()
+    token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
 
-    response = await client.get("/users/")
+    response = await client.get("/users/", headers={"Authorization": f"Bearer {token}"})
     json_response = response.json()
 
     assert response.status_code == 200
@@ -29,6 +28,7 @@ async def test_get_users(client: httpx.AsyncClient, create_user_instance: Callab
     assert data["name"] == user_data["name"]
     assert data["id"] == 1
     assert data.get("password") is None
+    assert data["companies"] == []
     assert data["registered_at"].split("T")[0] == str(datetime.utcnow().date())
 
 
@@ -54,7 +54,7 @@ async def test_get_users_paginated(
         items_is_not_empty: bool,
         total_expected: int,
         pages_expected: int,
-) -> None:
+        create_auth_jwt: Callable[..., Any]) -> None:
     user2_data = {
         "email": "test2@email.com",
         "name": "anton",
@@ -64,8 +64,9 @@ async def test_get_users_paginated(
     # Instantiate 2 users in the DB
     await create_user_instance()
     await create_user_instance(**user2_data)
+    token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
 
-    response = await client.get(f"/users/?page={page}&size={size}")
+    response = await client.get(f"/users/?page={page}&size={size}", headers={"Authorization": f"Bearer {token}"})
     json_response = response.json()
 
     assert response.status_code == 200
@@ -77,16 +78,19 @@ async def test_get_users_paginated(
 
 # Get single user
 async def test_get_user_by_id(client: httpx.AsyncClient,
-                              create_user_instance: Callable[..., Any]) -> None:
+                              create_user_instance: Callable[..., Any],
+                              create_auth_jwt: Callable[..., Any]) -> None:
     # Instantiate a user in the DB
     user_data = await create_user_instance()
+    token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
 
-    response = await client.get("/users/1")
+    response = await client.get("/users/1", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 200
     data = response.json()
     assert data["email"] == user_data["email"]
     assert data["name"] == user_data["name"]
     assert data["id"] == 1
+    assert data["companies"] == []
     assert data.get("password") is None
     assert data["registered_at"].split("T")[0] == str(datetime.utcnow().date())
 
@@ -110,7 +114,7 @@ async def test_get_user_by_id(client: httpx.AsyncClient,
             }
         ),
         (
-            1,
+            100,
             404,
             {"detail":
                 {
@@ -124,8 +128,13 @@ async def test_get_user_by_id_validation(
         client: httpx.AsyncClient,
         user_id: int | Any,
         status_code: int,
-        error_response: dict[str, Any]) -> None:
-    response = await client.get(f"users/{user_id}")
+        error_response: dict[str, Any],
+        create_user_instance: Callable[..., Any],
+        create_auth_jwt: Callable[..., Any]) -> None:
+    await create_user_instance()
+    token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
+
+    response = await client.get(f"users/{user_id}", headers={"Authorization": f"Bearer {token}"})
 
     assert response.status_code == status_code
     assert response.json() == error_response
@@ -140,7 +149,7 @@ async def test_delete_user(client: httpx.AsyncClient,
     response = await client.delete("/users/1/delete", headers={"Authorization": f"Bearer {jwt}"})
 
     assert response.status_code == 200
-    assert response.json() == {"deleted_user_id": 1}
+    assert response.json() == {"deleted_instance_id": 1}
 
 
 async def test_delete_user_not_found(client: httpx.AsyncClient,
@@ -164,7 +173,6 @@ async def test_delete_user_permission_error(client: httpx.AsyncClient,
     response = await client.delete("/users/1/delete", headers={"Authorization": f"Bearer {jwt}"})
 
     assert response.status_code == 403
-    print(response.json())
     assert response.json() == {'detail': {'error': 'Forbidden'}}
 
 
@@ -178,7 +186,6 @@ async def test_update_user(client: httpx.AsyncClient,
     update_data = {"name": "New Name"}
     response = await client.patch("/users/1/update", headers={"Authorization": f"Bearer {jwt}"},
                                   data=json.dumps(update_data))
-    print(response.json())
     assert response.status_code == 200
 
 
@@ -187,7 +194,7 @@ async def test_update_user(client: httpx.AsyncClient,
     (
         ({"name": "1231jnkdskjas"}, 400, {"detail": "Name should contain only english letters"}),
         ({"password": "short"}, 400, {"detail": "Password should contain at least eight characters, at least one letter and one number"}),
-        ({"email": "anotheremail@gmail.com"}, 400, {"detail": "You can't change the email"}),
+        ({"email": "anotheremail@gmail.com"}, 400, {"detail": "User email can't be changed, try again"}),
         ({}, 400, {"detail": {"error": "At least one parameter should be provided for user update query"}}),
     )
 )
@@ -204,6 +211,8 @@ async def test_update_user_validation(
     response = await client.patch("/users/1/update", headers={"Authorization": f"Bearer {jwt}"},
                                   data=json.dumps(update_data))
     assert response.status_code == status_code
+    print(response.json())
+    print(response_error)
     assert response.json() == response_error
 
 
@@ -219,5 +228,52 @@ async def test_update_user_permission_error(client: httpx.AsyncClient,
                                   data=json.dumps({"name": "name"}))
 
     assert response.status_code == 403
-    print(response.json())
     assert response.json() == {'detail': {'error': 'Forbidden'}}
+
+
+async def test_user_with_company(client: httpx.AsyncClient,
+                                 create_default_company_object: Callable[..., Any],
+                                 create_auth_jwt: Callable[..., Any]) -> None:
+    # Initialize data
+    await create_default_company_object()
+    token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
+    
+    response = await client.get("/users/1", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 200
+    data = response.json()
+
+    companies = data["companies"]
+    assert len(companies) == 1
+    assert companies[0]["title"] == "MyCompany"
+    assert companies[0]["description"] == "Description"
+    assert companies[0].get("is_hidden") == None
+    assert companies[0]["created_at"].split("T")[0] == str(datetime.utcnow().date())
+    
+
+
+async def test_user_after_company_delete(client: httpx.AsyncClient,
+                                         create_auth_jwt: Callable[..., Any],                                         
+                                         create_default_company_object: Callable[..., Any]) -> None:
+    # Initialize data
+    await create_default_company_object()
+    token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
+    
+    
+    response_before = await client.get("/users/1", headers={"Authorization": f"Bearer {token}"})
+    assert response_before.status_code == 200
+    data_before = response_before.json()
+
+    # Check companies list before deleting the company
+    companies_before = data_before["companies"]
+    assert len(companies_before) == 1
+
+    response_delete = await client.delete("/companies/1/delete", headers={"Authorization": f"Bearer {token}"})
+    assert response_delete.json() == {"deleted_instance_id" : 1}
+
+    response_after = await client.get("/users/1", headers={"Authorization": f"Bearer {token}"})
+    assert response_after.status_code == 200
+    
+    # Check companies list after deleting the company
+    data_after = response_after.json()
+    companies_after = data_after["companies"]
+    assert len(companies_after) == 0

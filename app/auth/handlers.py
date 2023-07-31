@@ -1,16 +1,17 @@
-from typing import Dict, Optional
 from datetime import datetime, timedelta
+from typing import Dict, Optional
 
 import jwt
-from fastapi import HTTPException, Security, Depends
+from fastapi import Depends, HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_async_session
 from app.config import Settings, settings
+from app.database import get_async_session
 
-class VerifyAuth0Token():
+
+class VerifyAuth0Token:
     """Auth0 token verification class"""
 
     def __init__(self, token: str) -> None:
@@ -47,7 +48,7 @@ class VerifyAuth0Token():
         return {"email": payload['email'], "auth0": True}
 
 
-class AuthHandler():
+class AuthHandler:
     security = HTTPBearer()
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     secret: str = settings.jwt_secret
@@ -60,7 +61,7 @@ class AuthHandler():
 
     def encode_token(self, user_email: str) -> str:
         payload = {
-            'exp': datetime.utcnow() + timedelta(days=0, minutes=10),
+            'exp': datetime.utcnow() + timedelta(days=0, minutes=60),
             'iat': datetime.utcnow(),
             'sub': user_email
         }

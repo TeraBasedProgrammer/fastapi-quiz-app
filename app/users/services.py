@@ -1,19 +1,19 @@
 import logging
 from datetime import datetime
-from typing import List, Optional, Dict
+from typing import Any, Dict, List, Optional
 
-from sqlalchemy import select
-from sqlalchemy import update
-from sqlalchemy import delete
-from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import EmailStr
 from fastapi import HTTPException
+from pydantic import EmailStr
+from sqlalchemy import delete, select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import contains_eager, joinedload
 
-from app.users.models import User
-from .schemas import UserSchema, UserUpdateRequest
 from app.auth.handlers import AuthHandler
-from app.auth.schemas import UserSignUpAuth0
+from app.auth.schemas import UserSignUp, UserSignUpAuth0
+from app.schemas import UserFullSchema
+from app.users.models import User
 
+from .schemas import UserSchema, UserUpdateRequest
 
 logger = logging.getLogger("main_logger")
 
@@ -26,30 +26,31 @@ class UserRepository:
         self.auth = AuthHandler()
 
 
-    async def create_user(self, user_data: UserSchema, auth0: bool = False) -> User:
+    async def create_user(self, user_data: UserSignUp, auth0: bool = False) -> Dict[str, Any]:
         logger.debug(f"Received new user data: {user_data}")
         new_user = User(
            **user_data.model_dump() 
         )
         new_user.password = self.auth.get_password_hash(new_user.password)
+        new_user.companies = []
         logger.debug(f"Enctypted the password: {new_user.password[:10]}...")
         if auth0:
             new_user.auth0_registered = True
         self.db_session.add(new_user)
         await self.db_session.commit()
         logger.debug(f"Successfully inserted new user instance into the database")
-        return new_user
+        return {"id": new_user.id, "email": new_user.email}
 
 
     async def get_users(self) -> List[User]:
-        result = await self.db_session.execute(select(User))
-        return result.scalars().all()
+        result = await self.db_session.execute(select(User).options(joinedload(User.companies)))
+        return result.unique().scalars().all()
     
 
     async def get_user_by_id(self, user_id: int) -> Optional[User]:
         logger.debug(f"Received user id: '{user_id}'")
-        result = (await self.db_session.execute(
-                select(User).where(User.id == user_id))).scalar_one_or_none()
+        data = await self.db_session.execute(select(User).options(joinedload(User.companies)).where(User.id == user_id))
+        result = data.unique().scalar_one_or_none()
         if result:
             logger.debug(f"Retrieved user by id '{user_id}': {result.email}")
         return result
@@ -57,12 +58,11 @@ class UserRepository:
 
     async def get_user_by_email(self, email: EmailStr) -> Optional[User]:
         logger.debug(f"Received user email: '{email}'")
-        result = (await self.db_session.execute(
-                select(User).where(User.email == email))).scalar_one_or_none()
+        data = await self.db_session.execute(select(User).options(joinedload(User.companies)).where(User.email == email))
+        result = data.unique().scalar_one_or_none()
         if result:
             logger.debug(f"Retrieved user by email '{email}': '{result.id}'")
         return result
-
 
     async def update_user(self, user_id: int, user_data:UserUpdateRequest) -> Optional[UserSchema]:
         logger.debug(f"Received user data: {user_data}")
@@ -90,6 +90,7 @@ class UserRepository:
         await self.db_session.commit()
         logger.debug(f"Successfully deleted user '{result}' from the database")
         return result
+
 
     async def error_or_create(self, user_email: str) -> None:
         """Verifies that user with provided email wasn't registered using login 

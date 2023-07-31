@@ -1,8 +1,7 @@
 import json
 from datetime import datetime
-from typing import Any
 # Temp solution:
-from typing import Callable
+from typing import Any, Callable
 
 import httpx
 import pytest
@@ -38,10 +37,8 @@ async def test_signup(client: httpx.AsyncClient,
 
     data = response.json()
     assert data["email"] == user_data["email"]
-    assert data.get("name") == user_data.get("name")
     assert data["id"] == 1
     assert data.get("password") is None
-    assert data["registered_at"].split("T")[0] == str(datetime.utcnow().date())
 
 
 @pytest.mark.parametrize(

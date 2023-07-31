@@ -1,9 +1,9 @@
 import logging
-import click
 import sys
 from copy import copy
+from typing import Literal, Optional
 
-from typing import Optional, Literal
+import click
 
 
 class ColorizedFormatter(logging.Formatter):

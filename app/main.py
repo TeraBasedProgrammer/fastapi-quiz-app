@@ -1,20 +1,18 @@
 import logging
 import logging.config
 
-import uvicorn
 import redis.asyncio as rd
+import uvicorn
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi_pagination import add_pagination
 from fastapi_pagination.utils import disable_installed_extensions_check
-from fastapi.middleware.cors import CORSMiddleware
-from typing import List
 
-from .users.router import user_router
 from .auth.router import auth_router
+from .companies.router import company_router
 from .config import settings
 from .log_config import LOGGING_CONFIG
-
-
+from .users.router import user_router
 
 # Set up logging configuration 
 logging.config.dictConfig(LOGGING_CONFIG)
@@ -32,6 +30,7 @@ disable_installed_extensions_check()
 # App routers
 app.include_router(user_router)
 app.include_router(auth_router)
+app.include_router(company_router)
 
 origins = [
     "http://localhost:8000",

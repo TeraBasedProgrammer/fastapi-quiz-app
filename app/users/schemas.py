@@ -1,13 +1,12 @@
-import re
 import logging
+import re
+from datetime import datetime
+from typing import List, Optional
 
 from fastapi import HTTPException
-from datetime import datetime
-from pydantic import BaseModel
-from pydantic import EmailStr
-from pydantic import field_validator
-from typing import Optional
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
+from app.companies.models import RoleEnum
 
 logger = logging.getLogger("main_logger")
 
@@ -28,13 +27,16 @@ class UserBase(BaseModel):
         return value
 
 
+
 class UserSchema(UserBase):
     id: int
     registered_at: datetime
     auth0_registered: Optional[bool] 
-
+    role: Optional[RoleEnum] = Field(None, nullable=True)
+    
     class Config:
         from_attributes = True
+        populate_by_name = True
 
 
 class UserUpdateRequest(UserBase):
@@ -54,10 +56,10 @@ class UserUpdateRequest(UserBase):
     def validate_email(cls, value):
         if value is not None:
             raise HTTPException(
-                status_code=400, detail="You can't change the email"
+                status_code=400, detail="User email can't be changed, try again"
             )
         return value
 
 
-class DeleteUserResponse(BaseModel):
-    deleted_user_id: int
+class DeletedInstanceResponse(BaseModel):
+    deleted_instance_id: int

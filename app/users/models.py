@@ -1,6 +1,7 @@
 from datetime import datetime
 
-from sqlalchemy import Column, String, Integer, TIMESTAMP, Boolean
+from sqlalchemy import TIMESTAMP, Boolean, Column, Integer, String
+from sqlalchemy.orm import relationship
 
 from app.database import Base
 
@@ -15,3 +16,7 @@ class User(Base):
     password = Column(String(length=1024), nullable=False)
     auth0_registered = Column(Boolean, default=False, nullable=False)
 
+    companies = relationship("CompanyUser", back_populates="users")
+
+    def __repr__(self):
+        return f"User {self.email}"
