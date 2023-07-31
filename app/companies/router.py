@@ -1,7 +1,7 @@
 import logging
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi_pagination import Page, Params, paginate
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,7 +10,8 @@ from app.auth.handlers import AuthHandler
 from app.database import get_async_session
 from app.schemas import CompanyFullSchema
 from app.users.schemas import DeletedInstanceResponse
-from app.users.services import error_handler
+from app.users.services import error_handler, UserRepository
+from app.company_requests.services import CompanyRequestsRepository
 
 from .schemas import CompanyCreate, CompanyUpdate
 from .services import CompanyRepository
@@ -39,7 +40,6 @@ async def get_all_companies(session: AsyncSession = Depends(get_async_session),
     return paginate(response, params)
 
 
-# Fix response validation error
 @company_router.get("/{company_id}", response_model=Optional[CompanyFullSchema], response_model_exclude_none=True)
 async def get_company(company_id: int, 
                       session: AsyncSession = Depends(get_async_session),
@@ -121,4 +121,46 @@ async def delete_company(company_id: int,
     deleted_company_id = await company_crud.delete_company(company_id)
     logger.info(f"Company {company_id} has been successfully deleted from the database")
     return DeletedInstanceResponse(deleted_instance_id=deleted_company_id)
+
+
+@company_router.post("/{company_id}/invite/{user_id}", 
+                     response_model=Optional[Dict[str, str]],
+                     status_code=201)
+async def invite_user(company_id: int, 
+                      user_id: int,
+                      session: AsyncSession = Depends(get_async_session),
+                      auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:
+    # Initialize services repositories
+    request_crud = CompanyRequestsRepository(session)
+    company_crud = CompanyRepository(session)
+    user_crud = UserRepository(session)
+
+    # Get sender user
+    current_user = await user_crud.get_user_by_email(auth["email"])
+
+    # Validate if requested instances exist
+    request_company = await company_crud.get_company_by_id(company_id, auth["email"])
+    if not request_company:
+        logger.warning(f"Company '{company_id}' is not found")
+        raise HTTPException(
+            status_code=404, detail=error_handler("Requested company is not found")
+        )
+    
+    request_user = await user_crud.get_user_by_id(user_id)
+    if not request_user:
+        logger.warning(f"User '{user_id}' is not found")
+        raise HTTPException(
+            status_code=404, detail=error_handler("Requested user is not found")
+        )
+ 
+    # Validate if user is already a member of the requested company
+    if await company_crud.check_user_membership(user_id, company_id):
+        logger.warning(f"Requested user '{user_crud}' is already a member fo the requested company '{company_id}'")
+        raise HTTPException(
+            status_code=403, detail=error_handler("Requested user is already a member of the company")
+        )
+    
+    # Send invitation
+    invitation = await request_crud.send_company_request(request_company.id, current_user.id, user_id)
+    return {"response": "Invitation was successfully sent"}
 

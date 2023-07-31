@@ -38,7 +38,7 @@ class CompanyRepository:
             logger.debug(f"Retrieved company by id '{company_id}': {result.title}")
 
             # Check permissions (validate if user is the owner of retrieved company)
-            if result.is_hidden:
+            if result.is_hidden and current_user_email:
                 await confirm_company_owner(result, current_user_email)
 
         return result 
@@ -59,6 +59,7 @@ class CompanyRepository:
         new_company = Company(
            **company_data.model_dump() 
         )
+        print("New company: ", new_company.__dict__)
         new_company.users = []
 
         # Insert new company object into the db
@@ -103,3 +104,12 @@ class CompanyRepository:
         await self.db_session.commit()
         logger.debug(f"Successfully deleted company '{result}' from the database")
         return result
+
+
+    async def check_user_membership(self, user_id: int, company_id: int) -> Optional[bool]:
+        logger.debug(f"Received company id: '{company_id}' and user id '{user_id}'")
+        result = await self.db_session.execute(select(CompanyUser).where((CompanyUser.company_id == company_id) & (CompanyUser.user_id == user_id)))
+        
+        data = result.scalar_one_or_none()
+        if data:
+            return True

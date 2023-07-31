@@ -21,7 +21,7 @@ def upgrade() -> None:
     op.create_table('company_user',
     sa.Column('company_id', sa.Integer(), nullable=False),
     sa.Column('user_ud', sa.Integer(), nullable=False),
-    sa.Column('role', sa.Enum('owner', 'admin', 'member', name='roleenum'), nullable=False),
+    sa.Column('role', sa.Enum('Owner', 'Admin', 'Member', name='roleenum'), nullable=False),
     sa.ForeignKeyConstraint(['company_id'], ['companies.id'], ),
     sa.ForeignKeyConstraint(['user_ud'], ['users.id'], ),
     sa.PrimaryKeyConstraint('company_id', 'user_ud')
