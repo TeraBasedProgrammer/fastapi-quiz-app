@@ -10,7 +10,6 @@ from sqlalchemy.orm import contains_eager, joinedload
 
 from app.auth.handlers import AuthHandler
 from app.auth.schemas import UserSignUp, UserSignUpAuth0
-from app.schemas import UserFullSchema
 from app.users.models import User
 
 from .schemas import UserSchema, UserUpdateRequest

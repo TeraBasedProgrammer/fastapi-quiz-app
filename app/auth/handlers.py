@@ -30,9 +30,9 @@ class VerifyAuth0Token:
                 self.token
             ).key
         except jwt.exceptions.PyJWKClientError as error:
-            raise HTTPException(status_code=401, detail='Invalid token payload')
+            raise HTTPException(401, detail='Invalid token payload')
         except jwt.exceptions.DecodeError as error:
-            raise HTTPException(status_code=401, detail='Token decode error')
+            raise HTTPException(401, detail='Token decode error')
 
         try:
             payload = jwt.decode(
@@ -43,7 +43,7 @@ class VerifyAuth0Token:
                 issuer=self.config.auth0_issuer,
             )
         except jwt.InvalidTokenError as e:
-            raise HTTPException(status_code=401, detail='Invalid token or its signature has expired')
+            raise HTTPException(401, detail='Invalid token or its signature has expired')
 
         return {"email": payload['email'], "auth0": True}
 
@@ -76,14 +76,14 @@ class AuthHandler:
             payload = jwt.decode(token, self.secret, algorithms=['HS256'])
             return {"email": payload['sub'], "auth0": False}
         except jwt.ExpiredSignatureError:
-            raise HTTPException(status_code=401, detail='Signature has expired')
+            raise HTTPException(401, detail='Signature has expired')
         except jwt.InvalidTokenError as e: 
             # If token doesn't have the default structure, funcion delegates token verification to the auth0 jwt validator
             auth0_decoder = VerifyAuth0Token(token)
             decoded_data = auth0_decoder.verify()
             if decoded_data:
                 return decoded_data
-            raise HTTPException(status_code=401, detail='Invalid token')
+            raise HTTPException(401, detail='Invalid token')
 
     async def auth_wrapper(self, session: AsyncSession = Depends(get_async_session), 
                            auth: HTTPAuthorizationCredentials = Security(security)) -> Optional[Dict[str, bool]]:

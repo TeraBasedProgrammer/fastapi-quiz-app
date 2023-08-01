@@ -1,7 +1,7 @@
 import logging
 import re
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 
 from fastapi import HTTPException
 from pydantic import BaseModel, EmailStr, Field, field_validator

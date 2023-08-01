@@ -1,5 +1,4 @@
-from sqlalchemy import Column, Integer, ForeignKey, UniqueConstraint
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, ForeignKey, Integer, UniqueConstraint
 
 from app.database import Base
 
@@ -12,5 +11,3 @@ class CompanyRequest(Base):
     sender_id = Column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     receiver_id = Column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     company_id = Column(ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)
-
-    # Add relationship fields

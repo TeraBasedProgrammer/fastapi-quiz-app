@@ -8,7 +8,6 @@ from sqlalchemy.orm import joinedload
 
 from app.auth.handlers import AuthHandler
 from app.companies.models import Company, CompanyUser, RoleEnum
-from app.users.models import User
 from app.users.services import UserRepository
 
 from .schemas import CompanyCreate, CompanyUpdate
@@ -30,7 +29,7 @@ class CompanyRepository:
         return result.unique().scalars().all()
         
     
-    async def get_company_by_id(self, company_id: int, current_user_email: EmailStr) -> Optional[Company]:
+    async def get_company_by_id(self, company_id: int, current_user_email: EmailStr, validation_required: bool = False) -> Optional[Company]:
         logger.debug(f"Received company id: '{company_id}'")
         data = await self.db_session.execute(select(Company).options(joinedload(Company.users)).where(Company.id == company_id))
         result = data.unique().scalar_one_or_none()
@@ -38,7 +37,7 @@ class CompanyRepository:
             logger.debug(f"Retrieved company by id '{company_id}': {result.title}")
 
             # Check permissions (validate if user is the owner of retrieved company)
-            if result.is_hidden and current_user_email:
+            if result.is_hidden or validation_required:
                 await confirm_company_owner(result, current_user_email)
 
         return result 
@@ -59,7 +58,6 @@ class CompanyRepository:
         new_company = Company(
            **company_data.model_dump() 
         )
-        print("New company: ", new_company.__dict__)
         new_company.users = []
 
         # Insert new company object into the db
@@ -112,4 +110,11 @@ class CompanyRepository:
         
         data = result.scalar_one_or_none()
         if data:
+            return True
+
+    async def user_is_owner(self, user_id: int, company_id: int) -> Optional[bool]:
+        result = await self.db_session.execute(select(CompanyUser).where((CompanyUser.company_id == company_id) & (CompanyUser.user_id == user_id)))
+        
+        data = result.scalar_one_or_none()
+        if data.role == RoleEnum.Owner:
             return True
