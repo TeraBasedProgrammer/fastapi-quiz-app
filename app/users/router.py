@@ -107,6 +107,7 @@ async def delete_user(user_id: int,
 async def leave_company(company_id: int,
                         session: AsyncSession = Depends(get_async_session),
                         auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:
+    logger.info(f"Trying to leave company {company_id}")
     # Initialize services repositories
     request_crud = CompanyRequestsRepository(session)
     company_crud = CompanyRepository(session)
@@ -132,6 +133,7 @@ async def leave_company(company_id: int,
      
     # Leave the company
     await request_crud.remove_user_from_company(company_id=company_id, user_id=current_user.id)
+    logger.info(f"Successfully left company {company_id}")
     return {"response": f"You have successfully left company {company_id}"}
 
  

@@ -22,10 +22,12 @@ class CompanyRequestsRepository:
 
 
     async def _get_company_onwer_id(self, company_id: int) -> int:
-        owner_id = await self.db_session.execute(select(CompanyUser.user_id)
+        owner_id_request = await self.db_session.execute(select(CompanyUser.user_id)
                                                  .where((CompanyUser.company_id == company_id) 
                                                         & (CompanyUser.role == RoleEnum.Owner)))
-        return owner_id.first()[0]
+        owner_id = owner_id_request.first()[0]
+        logger.debug(f"Retrieved owner id of the company {company_id}: {owner_id}")
+        return owner_id
 
 
     async def send_company_request(self, company: Company, sender_id: int, receiver_id: int) -> None:
@@ -57,6 +59,7 @@ class CompanyRequestsRepository:
         company_user = CompanyUser(user_id=user_id_to_add, company_id=request.company_id, role=RoleEnum.Member)
         self.db_session.add(company_user)
         await self.db_session.commit()
+        logger.debug(f"Successfully added user {user_id_to_add} to the company {request.company_id}")
 
         # Delete accepted request
         await self.delete_company_request(request.id)
@@ -69,6 +72,7 @@ class CompanyRequestsRepository:
                    & (CompanyUser.user_id == user_id)))
         
         await self.db_session.commit()
+        logger.debug(f"Successfully removed user {user_id} from the company {company_id}")
 
 
     async def get_request_by_id(self, request_id: int) -> Optional[CompanyRequest]:
@@ -78,6 +82,8 @@ class CompanyRequestsRepository:
 
     async def get_received_requests(self, receiver_id: int, 
                                     for_company: bool) -> List[Optional[Dict[int, Company]]] | List[Optional[Dict[int, User]]]:
+        logger.debug(f"Received data:\nreceiver_id -> {receiver_id}\nfor_company -> {for_company}")
+
         subquery = select(CompanyUser.company_id).where(CompanyUser.user_id == receiver_id)
         if for_company:
             # Requests received by company from user
@@ -85,18 +91,22 @@ class CompanyRequestsRepository:
                 .join(User, CompanyRequest.sender_id == User.id)
                 .where((CompanyRequest.receiver_id == receiver_id) & (CompanyRequest.company_id.in_(subquery))))
 
-            return [{'request_id': item[0], 'user': item[1]} for item in query.all()]
+            response_data = [{'request_id': item[0], 'user': item[1]} for item in query.all()]
+            logger.debug(f"Successfully retrieved company requests: {response_data}")
+            return response_data
         else:
             # Invitation received by user from company
             query = await self.db_session.execute(select(CompanyRequest.id, CompanyRequest.sender_id, Company)
                 .join(Company, CompanyRequest.company_id == Company.id)
                 .where((CompanyRequest.receiver_id == receiver_id) & (CompanyRequest.company_id.notin_(subquery))))
-
-            return [{'invitation_id': item[0], 'sender_id': item[1], 'company': item[2]} for item in query.all()]
-
+            
+            response_data = [{'invitation_id': item[0], 'sender_id': item[1], 'company': item[2]} for item in query.all()]
+            logger.debug(f"Successfully retrieved user invitations: {response_data}")
+            return response_data
 
     async def get_sent_requests(self, sender_id: int, 
                                 for_company: bool)  -> List[Optional[Dict[int, Company]]] | List[Optional[Dict[int, User]]]:
+        logger.debug(f"Received data:\nsender_id -> {sender_id}\nfor_company -> {for_company}")
         subquery = select(CompanyUser.company_id).where(CompanyUser.user_id == sender_id)
         # Invitations sent by company 
         if for_company:
@@ -104,11 +114,15 @@ class CompanyRequestsRepository:
                 .join(User, CompanyRequest.receiver_id == User.id)
                 .where((CompanyRequest.sender_id == sender_id) & (CompanyRequest.company_id.in_(subquery))))
 
-            return [{'invitation_id': item[0], 'user': item[1]} for item in query.all()]
+            response_data = [{'invitation_id': item[0], 'user': item[1]} for item in query.all()]
+            logger.debug(f"Successfully retrieved company invitations: {response_data}")
+            return response_data
         else:
             # Requests sent by user
             query = await self.db_session.execute(select(CompanyRequest.id, Company)
                 .join(Company, CompanyRequest.company_id == Company.id)
                 .where((CompanyRequest.sender_id == sender_id) & (CompanyRequest.company_id.notin_(subquery))))
-
-            return [{'request_id': item[0], 'company': item[1]} for item in query.all()]
+            
+            response_data = [{'request_id': item[0], 'company': item[1]} for item in query.all()]
+            logger.debug(f"Successfully retrieved user requests: {response_data}")
+            return response_data

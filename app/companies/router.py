@@ -119,6 +119,7 @@ async def invite_user(company_id: int,
                       user_id: int,
                       session: AsyncSession = Depends(get_async_session),
                       auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:
+    logger.info(f"Trying to invite user {user_id} to the company {company_id}")
     # Initialize services repositories
     request_crud = CompanyRequestsRepository(session)
     company_crud = CompanyRepository(session)
@@ -145,6 +146,7 @@ async def invite_user(company_id: int,
     
     # Send invitation
     await request_crud.send_company_request(company=request_company, sender_id=current_user.id, receiver_id=user_id)
+    logger.info(f"Successfully invited user {user_id} to the company {company_id}")
     return {"response": "Invitation was successfully sent"}
 
 
@@ -153,6 +155,7 @@ async def kick_user(company_id: int,
                     user_id: int,
                     session: AsyncSession = Depends(get_async_session),
                     auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:
+    logger.info(f"Trying to kick user {user_id} from the company {company_id}")
     # Initialize services repositories
     request_crud = CompanyRequestsRepository(session)
     company_crud = CompanyRepository(session)
@@ -181,6 +184,7 @@ async def kick_user(company_id: int,
     
     # Kick user
     await request_crud.remove_user_from_company(company_id=company_id, user_id=user_id)
+    logger.info(f"Successfully kicked user {user_id} from the company {company_id}")
     return {"response": f"User '{user_id}' was successfully kicked from the company"}
 
 
@@ -188,6 +192,7 @@ async def kick_user(company_id: int,
 async def get_received_requests(company_id: int, 
                        session: AsyncSession = Depends(get_async_session),
                        auth=Depends(auth_handler.auth_wrapper)) -> Optional[List[CompanyRequestSchema]]:
+    logger.info(f"Trying to get requests list of the company {company_id}")
     # Initialize services
     request_crud = CompanyRequestsRepository(session)
     user_crud = UserRepository(session)
@@ -200,6 +205,7 @@ async def get_received_requests(company_id: int,
 
     current_user = await user_crud.get_user_by_email(auth["email"])
     res = await request_crud.get_received_requests(receiver_id=current_user.id, for_company=True)
+    logger.info(f"Successfully retrieved requests list of the company {company_id}")
     return res
 
 
@@ -207,6 +213,7 @@ async def get_received_requests(company_id: int,
 async def get_sent_invitations(company_id: int, 
                        session: AsyncSession = Depends(get_async_session),
                        auth=Depends(auth_handler.auth_wrapper)) -> Optional[List[CompanyInvitationSchema]]:
+    logger.info(f"Trying to get sent invitations list of the company {company_id}")
     # Initialize services
     request_crud = CompanyRequestsRepository(session)
     user_crud = UserRepository(session)
@@ -219,5 +226,6 @@ async def get_sent_invitations(company_id: int,
 
     current_user = await user_crud.get_user_by_email(auth["email"])
     res = await request_crud.get_sent_requests(sender_id=current_user.id, for_company=True)
+    logger.info(f"Successfully retrieved sent invitations list of the company {company_id}")
     return res
 

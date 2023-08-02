@@ -105,16 +105,22 @@ class CompanyRepository:
 
 
     async def check_user_membership(self, user_id: int, company_id: int) -> Optional[bool]:
-        logger.debug(f"Received company id: '{company_id}' and user id '{user_id}'")
+        logger.debug(f"Received data:\ncompany_id -> {company_id}\nuser_id -> {user_id}")
         result = await self.db_session.execute(select(CompanyUser).where((CompanyUser.company_id == company_id) & (CompanyUser.user_id == user_id)))
         
         data = result.scalar_one_or_none()
         if data:
+            logger.debug(f"User {user_id} is a member of the company {company_id}")
             return True
+        logger.debug(f"User {user_id} is not a member of the company {company_id}")
+        
 
     async def user_is_owner(self, user_id: int, company_id: int) -> Optional[bool]:
+        logger.debug(f"Received data:\ncompany_id -> {company_id}\nuser_id -> {user_id}")
         result = await self.db_session.execute(select(CompanyUser).where((CompanyUser.company_id == company_id) & (CompanyUser.user_id == user_id)))
         
         data = result.scalar_one_or_none()
         if data.role == RoleEnum.Owner:
+            logger.debug(f"User {user_id} is the owner of the company {company_id}")
             return True
+        logger.debug(f"User {user_id} is not the owner of the company {company_id}")

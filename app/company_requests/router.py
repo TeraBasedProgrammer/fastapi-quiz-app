@@ -32,6 +32,7 @@ invitation_router = APIRouter(
 async def cancel_invitation(invitation_id: int,
                             session: AsyncSession = Depends(get_async_session),
                             auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:
+    logger.info(f"Trying to cancel ivnitation {invitation_id}")
     # Initialize services repositories
     request_crud = CompanyRequestsRepository(session)
     user_crud = UserRepository(session)
@@ -51,6 +52,7 @@ async def cancel_invitation(invitation_id: int,
 
     # Cancel the invitation 
     await request_crud.delete_company_request(invitation_id)
+    logger.info(f"Successfully canceled ivnitation {invitation_id}")
     return {"response": "Invitation was successfully canceled"}
 
 
@@ -58,6 +60,7 @@ async def cancel_invitation(invitation_id: int,
 async def accept_invitation(invitation_id: int,
                             session: AsyncSession = Depends(get_async_session),
                             auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:
+    logger.info(f"Trying to cancel invitation {invitation_id}")
     # Initialize services repositories
     request_crud = CompanyRequestsRepository(session)
     user_crud = UserRepository(session)
@@ -77,6 +80,7 @@ async def accept_invitation(invitation_id: int,
 
     # Accept the invitation 
     await request_crud.accept_company_request(invitation, is_invitation=True)
+    logger.info(f"Successfully accepted ivnitation {invitation_id}")
     return {"response": "Invitation was successfully accepted"}
 
 
@@ -84,7 +88,8 @@ async def accept_invitation(invitation_id: int,
 async def decline_invitation(invitation_id: int,
                             session: AsyncSession = Depends(get_async_session),
                             auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:
-     # Initialize services repositories
+    logger.info(f"Trying to  invitation {invitation_id}")
+    # Initialize services repositories
     request_crud = CompanyRequestsRepository(session)
     user_crud = UserRepository(session)
 
@@ -103,6 +108,7 @@ async def decline_invitation(invitation_id: int,
 
     # Decline the invitation 
     await request_crud.delete_company_request(invitation.id)
+    logger.info(f"Successfully declined ivnitation {invitation_id}")
     return {"response": "Invitation was successfully declined"}
 
 
@@ -110,7 +116,8 @@ async def decline_invitation(invitation_id: int,
 async def request_company_membership(company_id: int,
                                      session: AsyncSession = Depends(get_async_session),
                                      auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:
-     # Initialize services repositories
+    logger.info(f"Trying to send membership request to the company {company_id}")
+    # Initialize services repositories
     request_crud = CompanyRequestsRepository(session)
     company_crud = CompanyRepository(session)
     user_crud = UserRepository(session)
@@ -131,13 +138,15 @@ async def request_company_membership(company_id: int,
 
     # Send request
     await request_crud.send_company_request(company=request_company, sender_id=current_user.id, receiver_id=None)
+    logger.info(f"Successfully sent membership request to the company {company_id}")
     return {"response": "Membership request was successfully sent"}
 
 
 @request_router.delete("/{request_id}/cancel", response_model=Optional[Dict[str, str]])
-async def request_company_membership_decline(request_id: int,
+async def request_company_membership_cancel(request_id: int,
                                      session: AsyncSession = Depends(get_async_session),
                                      auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:  
+    logger.info(f"Trying to cancel membership request {request_id}")
     # Initialize services repositories
     request_crud = CompanyRequestsRepository(session)
     user_crud = UserRepository(session)
@@ -157,12 +166,14 @@ async def request_company_membership_decline(request_id: int,
 
     # Cancel the request
     await request_crud.delete_company_request(request_id)
+    logger.info(f"Successfully canceled membership request {request_id}")
     return {"response": "Membership request was successfully canceled"}
 
 @request_router.post("/{request_id}/accept", response_model=Optional[Dict[str, str]])
 async def accept_request(request_id: int,
                             session: AsyncSession = Depends(get_async_session),
                             auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:
+    logger.info(f"Trying to accept membership request {request_id}")
     # Initialize services repositories
     request_crud = CompanyRequestsRepository(session)
     user_crud = UserRepository(session)
@@ -182,14 +193,16 @@ async def accept_request(request_id: int,
 
     # Accept the invitation 
     await request_crud.accept_company_request(request, is_invitation=False)
+    logger.info(f"Successfully accepted membership request {request_id}")
     return {"response": "Membership request was successfully accepted"}
 
 
 @request_router.delete("/{request_id}/decline", response_model=Optional[Dict[str, str]])
-async def accept_request(request_id: int,
+async def decline_request(request_id: int,
                             session: AsyncSession = Depends(get_async_session),
                             auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:
-     # Initialize services repositories
+    logger.info(f"Trying to decline membership request {request_id}")
+    # Initialize services repositories
     request_crud = CompanyRequestsRepository(session)
     user_crud = UserRepository(session)
 
@@ -208,4 +221,5 @@ async def accept_request(request_id: int,
 
     # Decline the invitation 
     await request_crud.delete_company_request(invitation.id)
+    logger.info(f"Successfully declined membership request {request_id}")
     return {"response": "Membership request was successfully declined"}
