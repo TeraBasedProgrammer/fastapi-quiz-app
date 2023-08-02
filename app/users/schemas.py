@@ -3,6 +3,7 @@ import re
 from datetime import datetime
 from typing import Optional
 
+from starlette import status
 from fastapi import HTTPException
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
@@ -22,7 +23,7 @@ class UserBase(BaseModel):
         if not re.compile(r"^[a-zA-Z\- ]+$").match(value):
             logger.warning(f"Validation error: 'name' field contains restricted characters")
             raise HTTPException(
-                status_code=400, detail="Name should contain only english letters"
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Name should contain only english letters"
             )
         return value
 
@@ -48,7 +49,7 @@ class UserUpdateRequest(UserBase):
     def validate_password(cls, value):
         if not re.compile(r"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$").match(value):
             raise HTTPException(
-                status_code=400, detail="Password should contain at least eight characters, at least one letter and one number"
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Password should contain at least eight characters, at least one letter and one number"
             )
         return value
 
@@ -56,7 +57,7 @@ class UserUpdateRequest(UserBase):
     def validate_email(cls, value):
         if value is not None:
             raise HTTPException(
-                status_code=400, detail="User email can't be changed, try again"
+                status_code=status.HTTP_400_BAD_REQUEST, detail="User email can't be changed, try again"
             )
         return value
 

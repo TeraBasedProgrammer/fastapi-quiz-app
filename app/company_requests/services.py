@@ -1,6 +1,7 @@
 import logging
 from typing import Dict, List, Optional
 
+from starlette import status
 from fastapi import HTTPException
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
@@ -38,7 +39,7 @@ class CompanyRequestsRepository:
             self.db_session.add(new_company_request)
             await self.db_session.commit()
         except IntegrityError:
-            raise HTTPException(400, detail=error_handler("You've already sent a request to this user / company"))
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("You've already sent a request to this user / company"))
 
 
     async def delete_company_request(self, request_id: int) -> None:

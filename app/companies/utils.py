@@ -1,5 +1,6 @@
 import logging
 
+from starlette import status
 from fastapi import HTTPException
 from pydantic import EmailStr
 
@@ -15,7 +16,7 @@ async def confirm_company_owner(company: Company, current_user_email: EmailStr) 
     owner_user_authenticated = list(filter(lambda x: x.users.email == current_user_email and x.role == RoleEnum.Owner, company.users))
     if not owner_user_authenticated:
         logger.warning(f"User {current_user_email} is not a company owner, abort")
-        raise HTTPException(403, detail=error_handler("Forbidden"))
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
 
 
 async def filter_companies_response(response: list[Company]) -> list[Company]:
