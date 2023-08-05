@@ -3,7 +3,6 @@ from datetime import datetime
 
 from sqlalchemy import (TIMESTAMP, Boolean, Column, Enum, ForeignKey, Integer,
                         String)
-from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import relationship
 
 from app.database import Base

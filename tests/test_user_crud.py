@@ -211,8 +211,6 @@ async def test_update_user_validation(
     response = await client.patch("/users/1/update", headers={"Authorization": f"Bearer {jwt}"},
                                   data=json.dumps(update_data))
     assert response.status_code == status_code
-    print(response.json())
-    print(response_error)
     assert response.json() == response_error
 
 

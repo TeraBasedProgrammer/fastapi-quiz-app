@@ -2,15 +2,15 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from starlette import status
 from fastapi import HTTPException
 from pydantic import EmailStr
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import contains_eager, joinedload
+from sqlalchemy.orm import joinedload
 
 from app.auth.handlers import AuthHandler
 from app.auth.schemas import UserSignUp, UserSignUpAuth0
-from app.schemas import UserFullSchema
 from app.users.models import User
 
 from .schemas import UserSchema, UserUpdateRequest
@@ -106,7 +106,7 @@ class UserRepository:
             return
         if not user_existing_object.auth0_registered:
             logger.error("Error: user with provided email has been registered using logging-password way")
-            raise HTTPException(400, detail=error_handler("User with is email has already been registered. Try to register with another email"))
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("User with is email has already been registered. Try to register with another email"))
 
 
 def error_handler(message: str) -> Dict[str, str]:

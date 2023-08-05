@@ -8,11 +8,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi_pagination import add_pagination
 from fastapi_pagination.utils import disable_installed_extensions_check
 
-from .auth.router import auth_router
-from .companies.router import company_router
-from .config import settings
-from .log_config import LOGGING_CONFIG
-from .users.router import user_router
+from app.auth.router import auth_router
+from app.companies.router import company_router
+from app.company_requests.router import invitation_router, request_router
+from app.config import settings
+from app.log_config import LOGGING_CONFIG
+from app.users.router import user_router
 
 # Set up logging configuration 
 logging.config.dictConfig(LOGGING_CONFIG)
@@ -31,6 +32,8 @@ disable_installed_extensions_check()
 app.include_router(user_router)
 app.include_router(auth_router)
 app.include_router(company_router)
+app.include_router(request_router)
+app.include_router(invitation_router)
 
 origins = [
     "http://localhost:8000",

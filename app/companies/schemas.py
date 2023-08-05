@@ -1,8 +1,9 @@
 import logging
 import re
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 
+from starlette import status
 from fastapi import HTTPException
 from pydantic import BaseModel, Field, field_validator
 
@@ -20,7 +21,7 @@ class CompanyBase(BaseModel):
         if not re.compile(r"^[a-zA-Z0-9\-. ]+$").match(value):
             logger.warning(f"Validation error: 'title' field contains restricted characters")
             raise HTTPException(
-                status_code=400, detail="Title may contain only english letters, numbers and special characters ('.', '-', ' ')"
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Title may contain only english letters, numbers and special characters ('.', '-', ' ')"
             )
             
         return value

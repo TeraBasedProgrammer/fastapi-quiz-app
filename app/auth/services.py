@@ -1,5 +1,6 @@
 import logging
 
+from starlette import status
 from fastapi import HTTPException
 
 from app.users.services import UserRepository, error_handler
@@ -11,4 +12,4 @@ async def confirm_current_user(crud: UserRepository, current_user_email: str, us
     current_user = await crud.get_user_by_email(current_user_email)
     if current_user.id != user_id:
         logger.warning(f"User {user_id} is not a current user, abort")
-        raise HTTPException(403, detail=error_handler("Forbidden"))
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))

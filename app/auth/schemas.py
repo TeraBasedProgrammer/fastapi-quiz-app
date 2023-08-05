@@ -2,6 +2,7 @@ import logging
 import re
 from typing import Optional
 
+from starlette import status
 from fastapi import HTTPException
 from pydantic import BaseModel, field_validator
 
@@ -18,9 +19,7 @@ class UserSignUp(UserBase):
     def validate_password(cls, value):
         if not re.compile(r"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$").match(value):
             logger.warning(f"Validation error: password doesn't match the pattern")
-            raise HTTPException(
-                status_code=400, detail="Password should contain at least eight characters, at least one letter and one number"
-            )
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Password should contain at least eight characters, at least one letter and one number")
         return value
 
 
