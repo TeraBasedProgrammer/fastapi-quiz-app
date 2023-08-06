@@ -9,9 +9,10 @@ from sqlalchemy.orm import joinedload
 from app.auth.handlers import AuthHandler
 from app.companies.models import Company, CompanyUser, RoleEnum
 from app.users.services import UserRepository
+from app.users.models import User
 
 from .schemas import CompanyCreate, CompanyUpdate
-from .utils import confirm_company_owner
+from .utils import confirm_company_owner_or_admin
 
 logger = logging.getLogger("main_logger")
 
@@ -38,7 +39,7 @@ class CompanyRepository:
 
             # Check permissions (validate if user is the owner of retrieved company)
             if result.is_hidden or validation_required:
-                await confirm_company_owner(result, current_user_email)
+                await confirm_company_owner_or_admin(result, current_user_email)
 
         return result 
 
@@ -86,7 +87,7 @@ class CompanyRepository:
         )
         res = await self.db_session.execute(query)
         await self.db_session.commit()
-        logger.debug(f"Successfully updatetd company instance {company_id}")
+        logger.debug(f"Successfully updated company instance {company_id}")
         return res.scalar_one()
 
 
@@ -124,3 +125,38 @@ class CompanyRepository:
             logger.debug(f"User {user_id} is the owner of the company {company_id}")
             return True
         logger.debug(f"User {user_id} is not the owner of the company {company_id}")
+
+
+    async def get_admins(self, company_id: int) -> List[User]:
+        logger.debug(f"Received data:\ncompany_id -> {company_id}")
+        result = await self.db_session.execute(select(CompanyUser, User)
+                                               .join(User, CompanyUser.user_id == User.id)
+                                               .where((CompanyUser.role == RoleEnum.Admin) & (CompanyUser.company_id == company_id))
+                                               .reduce_columns(CompanyUser))
+        response = result.all()
+        logger.debug(f"Successfully retrieved company admins list: {response}")
+        return response
+
+
+    async def set_admin_role(self, company_id: int, user_id: int) -> None:
+        logger.debug(f"Received data:\ncompany_id -> {company_id}\nuser_id -> {user_id}")
+        query = (
+            update(CompanyUser)
+            .where((CompanyUser.user_id == user_id) & (CompanyUser.company_id == company_id))
+            .values({"role": RoleEnum.Admin})
+        )
+        res = await self.db_session.execute(query)
+        await self.db_session.commit()
+        logger.debug(f"Successfully set admin role for user {user_id} in company {company_id}")
+    
+
+    async def user_is_admin(self, user_id: int, company_id: int) -> Optional[bool]:
+        logger.debug(f"Received data:\ncompany_id -> {company_id}\nuser_id -> {user_id}")
+        result = await self.db_session.execute(select(CompanyUser).where((CompanyUser.company_id == company_id) & (CompanyUser.user_id == user_id)))
+        
+        data = result.scalar_one_or_none()
+        if data.role == RoleEnum.Admin:
+            logger.debug(f"User {user_id} is admin in the company {company_id}")
+            return True
+        logger.debug(f"User {user_id} is not admin in the company {company_id}")
+            

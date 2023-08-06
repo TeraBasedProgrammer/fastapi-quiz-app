@@ -13,7 +13,7 @@ from app.company_requests.schemas import (CompanyInvitationSchema,
 from app.company_requests.services import CompanyRequestsRepository
 from app.database import get_async_session
 from app.schemas import CompanyFullSchema
-from app.users.schemas import DeletedInstanceResponse
+from app.users.schemas import DeletedInstanceResponse, UserSchema
 from app.users.services import UserRepository, error_handler
 
 from .schemas import CompanyCreate, CompanyUpdate
@@ -230,3 +230,68 @@ async def get_sent_invitations(company_id: int,
     logger.info(f"Successfully retrieved sent invitations list of the company {company_id}")
     return res
 
+
+@company_router.get("/{comapny_id}/admins", response_model=List[UserSchema], response_model_exclude_none=True)
+async def get_company_admin_list(company_id: int,
+                                 session: AsyncSession = Depends(get_async_session),
+                                 auth=Depends(auth_handler.auth_wrapper)) -> List[UserSchema]:
+    logger.info(f"Trying to get company admins list of the company {company_id}")
+    # Initialize services
+    company_crud = CompanyRepository(session)
+
+    request_company = await company_crud.get_company_by_id(company_id, auth["email"], validation_required=True)
+    if not request_company:
+        logger.warning(f"Company '{company_id}' is not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested company is not found"))
+    
+    admins = await company_crud.get_admins(company_id=company_id)
+    logger.info(f"Successfully retreived company admins list of the company {company_id}")
+    return admins
+
+# Requires refactor
+@company_router.get("/{company_id}/set-admin/{user_id}", response_model=Optional[Dict[str, str]])
+async def give_admin_role(company_id: int, 
+                          user_id: int,
+                          session: AsyncSession = Depends(get_async_session),
+                          auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:
+    # Initialize services 
+    user_crud = UserRepository(session)
+    company_crud = CompanyRepository(session)
+
+    company = await company_crud.get_company_by_id(company_id, auth["email"], validation_required=True)
+    if not company:
+        logger.warning(f"Company '{company_id}' is not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested company is not found"))
+
+    # Check if current user is the owner of the company 
+    current_user = await user_crud.get_user_by_email(auth["email"])
+    if not await company_crud.user_is_owner(user_id=current_user.id, company_id=company_id):
+        logger.warning(f"Validation error: User {user_id} is not the owner of the company {company_id}")
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("You don't have permission to perform this action"))
+
+    # Check if requested user is not yourself
+    if current_user.id == user_id:
+        logger.warning(f"Validation error: User {user_id} requested itself")
+        return HTTPException(status.HTTP_400_BAD_REQUEST, detail=("You can't change your own role"))
+
+    request_user = await user_crud.get_user_by_id(user_id)
+    if not request_user:
+        logger.warning(f"User '{user_id}' is not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested user is not found"))
+    
+    # Check if requested user is the member of the company
+    if not await company_crud.check_user_membership(user_id, company_id):
+        logger.warning(f"User '{user_id}' is not the member of the company '{company_id}'") 
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("User '{user_id}' is not the member of the company '{company_id}'"))
+
+    # Check if user isn't already an admin
+    if await company_crud.user_is_admin(user_id=user_id, company_id=company_id):
+        logger.warning(f"User {user_id} is already an admin in the company {company_id}")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("User '{user_id}' is already an admin in the company '{company_id}'"))
+    
+    # Set admin
+    await company_crud.set_admin_role(user_id=user_id, company_id=company_id)
+    logger.info(f"User {user_id} was successfuly assigned as admin")
+    
+    return {"response": f"User {user_id} was successfuly assigned as admin"}
+    
