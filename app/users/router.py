@@ -30,7 +30,7 @@ user_router = APIRouter(
 async def get_users(session: AsyncSession = Depends(get_async_session),
                     params: Params = Depends(),
                     auth=Depends(auth_handler.auth_wrapper)) -> Page[UserFullSchema]:
-    logger.info("Getting all user from the database")
+    logger.info("Retrieving all user from the database")
     user_crud = UserRepository(session)
     result = await user_crud.get_users() 
     logger.info("All user have been successfully retrieved")
@@ -44,21 +44,21 @@ async def get_users(session: AsyncSession = Depends(get_async_session),
 async def get_user(user_id: int, 
                    session: AsyncSession = Depends(get_async_session),
                    auth=Depends(auth_handler.auth_wrapper)) -> Optional[UserSchema]:
-    logger.info(f"Trying to get User instance by id '{user_id}'")
+    logger.info(f"Retrieving User instance by id \"{user_id}\"")
     user_crud = UserRepository(session)
-    info = await user_crud.get_user_by_id(user_id)
-    if not info:
-        logger.warning(f"User {user_id} is not found")
+    user = await user_crud.get_user_by_id(user_id)
+    if not user:
+        logger.warning(f"User \"{user_id}\" is not found")
         raise HTTPException(404, error_handler("User is not found"))
-    logger.info(f"Successfully retrieved User instance '{user_id}'")
-    return UserFullSchema.from_model(info)
+    logger.info(f"Successfully retrieved User instance \"{user}\"")
+    return UserFullSchema.from_model(user)
 
 
 @user_router.patch("/{user_id}/update", response_model=Optional[UserFullSchema], response_model_exclude_none=True)
 async def update_user(user_id: int, body: UserUpdateRequest, 
                       session: AsyncSession = Depends(get_async_session),
                       auth=Depends(auth_handler.auth_wrapper)) -> Optional[UserSchema]:
-    logger.info(f"Trying to update User instance '{user_id}'")
+    logger.info(f"Updating User instance \"{user_id}\"")
     user_crud = UserRepository(session)
     updated_user_params = body.model_dump(exclude_none=True)
     if updated_user_params == {}:
@@ -72,17 +72,17 @@ async def update_user(user_id: int, body: UserUpdateRequest,
 
         # Validate if requested user is current user
         if user_id != current_user_id:
-            logger.warning(f"User {user_id} is not a current user, abort")
+            logger.warning(f"Permission error: User \"{user_id}\" is not a current user")
             raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
 
         user_for_update = await user_crud.get_user_by_id(user_id)
         if not user_for_update:
-            logger.warning(f"User {user_id} is not found")
+            logger.warning(f"User \"{user_id}\" is not found")
             raise HTTPException(
                 status_code=404, detail=error_handler("User is not found")
             )
          
-        logger.info(f"User {user_id} have been successfully updated")
+        logger.info(f"User \"{user_id}\" have been successfully updated")
         return UserFullSchema.from_model(await user_crud.update_user(user_id, body), public_request=False)
     except IntegrityError:
         logger.warning(f"Validation error: User with provided email already exists")
@@ -93,7 +93,7 @@ async def update_user(user_id: int, body: UserUpdateRequest,
 async def delete_user(user_id: int, 
                       session: AsyncSession = Depends(get_async_session),
                       auth=Depends(auth_handler.auth_wrapper)) -> DeletedInstanceResponse:
-    logger.info(f"Trying to delete User instance '{user_id}'")
+    logger.info(f"Deleting User instance \"{user_id}\"")
     user_crud = UserRepository(session)
 
     # Retrieving current user id
@@ -102,17 +102,17 @@ async def delete_user(user_id: int,
 
     # Validate if requested user is current user
     if user_id != current_user_id:
-        logger.warning(f"User {user_id} is not a current user, abort")
+        logger.warning(f"Permission error: User \"{user_id}\" is not a current user")
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
 
     # Check if user exists
     user_for_deletion = await user_crud.get_user_by_id(user_id)
     if not user_for_deletion:
-        logger.warning(f"User '{user_id}' is not found")
+        logger.warning(f"User \"{user_id}\" is not found")
         raise HTTPException(404, detail=error_handler("User is not found"))
     
     deleted_user_id = await user_crud.delete_user(user_id)
-    logger.info(f"User {user_id} has been successfully deleted from the database")
+    logger.info(f"User \"{user_id}\" has been successfully deleted from the database")
     return DeletedInstanceResponse(deleted_instance_id=deleted_user_id)
 
 
@@ -120,7 +120,7 @@ async def delete_user(user_id: int,
 async def leave_company(company_id: int,
                         session: AsyncSession = Depends(get_async_session),
                         auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:
-    logger.info(f"Trying to leave company {company_id}")
+    logger.info(f"Leaving company \"{company_id}\"")
     # Initialize services repositories
     request_crud = CompanyRequestsRepository(session)
     company_crud = CompanyRepository(session)
@@ -129,7 +129,7 @@ async def leave_company(company_id: int,
     # Validate if requested instances exist
     request_company = await company_crud.get_company_by_id(company_id, auth["email"])
     if not request_company:
-        logger.warning(f"Company {company_id} is not found")
+        logger.warning(f"Company \"{company_id}\" is not found")
         raise HTTPException(404, detail=error_handler("Requested company is not found"))
 
     # Retrieving current user id
@@ -138,7 +138,7 @@ async def leave_company(company_id: int,
 
     # Validate if user is member of the company
     if not await company_crud.check_user_membership(user_id=current_user_id, company_id=company_id):
-        logger.warning(f"User '{current_user_id}' is not the member of the company {company_id}") 
+        logger.warning(f"User \"{current_user_id}\" is not the member of the company \"{request_company}\"") 
         raise HTTPException(400, detail=error_handler(f"User {current_user_id} is not the member of the company {company_id}"))
     
     # Validate if user isn't the owner of the company
@@ -148,7 +148,7 @@ async def leave_company(company_id: int,
      
     # Leave the company
     await request_crud.remove_user_from_company(company_id=company_id, user_id=current_user_id)
-    logger.info(f"Successfully left company {company_id}")
+    logger.info(f"Successfully left company \"{company_id}\"")
     return {"response": f"You have successfully left company {company_id}"}
 
  

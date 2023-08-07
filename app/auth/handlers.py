@@ -11,7 +11,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import Settings, settings
 from app.database import get_async_session
 from app.utils import get_global_user_crud
-from app.users.models import User
 
 
 class VerifyAuth0Token:

@@ -25,6 +25,9 @@ class Company(Base):
     
     users = relationship("CompanyUser", back_populates="companies") 
 
+    def __repr__(self) -> str:
+        return f"Company {self.title}"
+
 
 class CompanyUser(Base): 
     __tablename__ = "company_user"

@@ -27,13 +27,13 @@ class UserRepository:
 
 
     async def create_user(self, user_data: UserSignUp, auth0: bool = False) -> Dict[str, Any]:
-        logger.debug(f"Received new user data: {user_data}")
+        logger.debug(f"Received data:\nnew_user_data -> {user_data}")
         new_user = User(
            **user_data.model_dump() 
         )
         new_user.password = await self.auth.get_password_hash(new_user.password)
         new_user.companies = []
-        logger.debug(f"Enctypted the password: {new_user.password[:10]}...")
+        logger.debug(f"Enctypted the password: \"{new_user.password[:10]}...\"")
         if auth0:
             new_user.auth0_registered = True
         self.db_session.add(new_user)
@@ -48,24 +48,24 @@ class UserRepository:
     
 
     async def get_user_by_id(self, user_id: int) -> Optional[User]:
-        logger.debug(f"Received user id: '{user_id}'")
+        logger.debug(f"Received data:\nuser_id -> \"{user_id}\"")
         data = await self.db_session.execute(select(User).options(joinedload(User.companies)).where(User.id == user_id))
         result = data.unique().scalar_one_or_none()
         if result:
-            logger.debug(f"Retrieved user by id '{user_id}': {result.email}")
+            logger.debug(f"Retrieved user by id \"{user_id}\": \"{result.email}\"")
         return result
         
 
     async def get_user_by_email(self, email: EmailStr) -> Optional[User]:
-        logger.debug(f"Received user email: '{email}'")
+        logger.debug(f"Received data:\nuser_email -> \"{email}\"")
         data = await self.db_session.execute(select(User).options(joinedload(User.companies)).where(User.email == email))
         result = data.unique().scalar_one_or_none()
         if result:
-            logger.debug(f"Retrieved user by email '{email}': '{result.id}'")
+            logger.debug(f"Retrieved user by email \"{email}\": \"{result.id}\"")
         return result
 
     async def update_user(self, user_id: int, user_data:UserUpdateRequest) -> Optional[UserSchema]:
-        logger.debug(f"Received user data: {user_data}")
+        logger.debug(f"Received data:\nuser_data -> {user_data}")
         query = (
             update(User)
             .where(User.id == user_id)
@@ -74,12 +74,12 @@ class UserRepository:
         )
         res = await self.db_session.execute(query)
         await self.db_session.commit()
-        logger.debug(f"Successfully updatetd user instance {user_id}")
+        logger.debug(f"Successfully updatetd user instance \"{user_id}\"")
         return res.scalar_one()
 
 
     async def delete_user(self, user_id: int) -> Optional[int]:
-        logger.debug(f"Received user id: '{user_id}'")
+        logger.debug(f"Received data:\nuser_id -> \"{user_id}\"")
         query = (
             delete(User)
             .where(User.id == user_id)
@@ -88,7 +88,7 @@ class UserRepository:
 
         result = (await self.db_session.execute(query)).scalar_one()
         await self.db_session.commit()
-        logger.debug(f"Successfully deleted user '{result}' from the database")
+        logger.debug(f"Successfully deleted user \"{result}\" from the database")
         return result
 
 

@@ -27,7 +27,7 @@ class CompanyRequestsRepository:
                                                  .where((CompanyUser.company_id == company_id) 
                                                         & (CompanyUser.role == RoleEnum.Owner)))
         owner_id = owner_id_request.first()[0]
-        logger.debug(f"Retrieved owner id of the company {company_id}: {owner_id}")
+        logger.debug(f"Retrieved owner id of the company \"{company_id}\": \"{owner_id}\"")
         return owner_id
 
 
@@ -50,7 +50,7 @@ class CompanyRequestsRepository:
 
         await self.db_session.execute(query)
         await self.db_session.commit()
-        logger.debug(f"Successfully deleted company request '{request_id}' from the database")
+        logger.debug(f"Successfully deleted company request \"{request_id}\" from the database")
 
 
     async def accept_company_request(self, request: CompanyRequest, is_invitation: bool) -> None:
@@ -60,7 +60,7 @@ class CompanyRequestsRepository:
         company_user = CompanyUser(user_id=user_id_to_add, company_id=request.company_id, role=RoleEnum.Member)
         self.db_session.add(company_user)
         await self.db_session.commit()
-        logger.debug(f"Successfully added user {user_id_to_add} to the company {request.company_id}")
+        logger.debug(f"Successfully added user \"{user_id_to_add}\" to the company \"{request.company_id}\"")
 
         # Delete accepted request
         await self.delete_company_request(request.id)
@@ -73,7 +73,7 @@ class CompanyRequestsRepository:
                    & (CompanyUser.user_id == user_id)))
         
         await self.db_session.commit()
-        logger.debug(f"Successfully removed user {user_id} from the company {company_id}")
+        logger.debug(f"Successfully removed user \"{user_id}\" from the company \"{company_id}\"")
 
 
     async def get_request_by_id(self, request_id: int) -> Optional[CompanyRequest]:

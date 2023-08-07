@@ -33,7 +33,8 @@ invitation_router = APIRouter(
 async def cancel_invitation(invitation_id: int,
                             session: AsyncSession = Depends(get_async_session),
                             auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:
-    logger.info(f"Trying to cancel ivnitation {invitation_id}")
+    logger.info(f"Canceling ivnitation \"{invitation_id}\"")
+
     # Initialize services repositories
     request_crud = CompanyRequestsRepository(session)
     user_crud = UserRepository(session)
@@ -41,7 +42,7 @@ async def cancel_invitation(invitation_id: int,
     # Get invitation
     invitation = await request_crud.get_request_by_id(invitation_id)
     if not invitation:
-        logger.warning(f"Company invitation '{invitation_id}' is not found")
+        logger.warning(f"Company invitation \"{invitation_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Invitation is not found"))
     
     # Retrieving current user id
@@ -49,7 +50,7 @@ async def cancel_invitation(invitation_id: int,
     current_user_id = auth.get("id") if not current_user else current_user.id
 
     if current_user_id != invitation.sender_id:
-        logger.warning(f"Validation error: User '{current_user_id}' is not the sender of the invitation '{invitation_id}'")
+        logger.warning(f"Permission error: User \"{current_user_id}\" is not the sender of the invitation \"{invitation_id}\"")
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
 
     # Cancel the invitation 
@@ -62,15 +63,16 @@ async def cancel_invitation(invitation_id: int,
 async def accept_invitation(invitation_id: int,
                             session: AsyncSession = Depends(get_async_session),
                             auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:
-    logger.info(f"Trying to cancel invitation {invitation_id}")
-    # Initialize services repositories
+    logger.info(f"Accepting invitation \"{invitation_id}\"")
+
+    # Initialize services
     request_crud = CompanyRequestsRepository(session)
     user_crud = UserRepository(session)
 
     # Get invitation
     invitation = await request_crud.get_request_by_id(invitation_id)
     if not invitation:
-        logger.warning(f"Company invitation '{invitation_id}' is not found")
+        logger.warning(f"Company invitation \"{invitation_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Invitation is not found"))
     
     # Retrieving current user id
@@ -78,12 +80,12 @@ async def accept_invitation(invitation_id: int,
     current_user_id = auth.get("id") if not current_user else current_user.id
 
     if current_user_id != invitation.receiver_id:
-        logger.warning(f"Validation error: User '{current_user_id}' is not the receiver of the invitation '{invitation_id}'")
+        logger.warning(f"Permission error: User \"{current_user_id}\" is not the receiver of the invitation \"{invitation_id}\"")
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
 
     # Accept the invitation 
     await request_crud.accept_company_request(invitation, is_invitation=True)
-    logger.info(f"Successfully accepted ivnitation {invitation_id}")
+    logger.info(f"Successfully accepted ivnitation \"{invitation_id}\"")
     return {"response": "Invitation was successfully accepted"}
 
 
@@ -91,15 +93,16 @@ async def accept_invitation(invitation_id: int,
 async def decline_invitation(invitation_id: int,
                             session: AsyncSession = Depends(get_async_session),
                             auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:
-    logger.info(f"Trying to  invitation {invitation_id}")
-    # Initialize services repositories
+    logger.info(f"Declinng invitation \"{invitation_id}\"")
+
+    # Initialize services 
     request_crud = CompanyRequestsRepository(session)
     user_crud = UserRepository(session)
 
     # Get invitation
     invitation = await request_crud.get_request_by_id(invitation_id)
     if not invitation:
-        logger.warning(f"Company invitation '{invitation_id}' is not found")
+        logger.warning(f"Company invitation \"{invitation_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Invitation is not found"))
     
     # Retrieving current user id
@@ -107,12 +110,12 @@ async def decline_invitation(invitation_id: int,
     current_user_id = auth.get("id") if not current_user else current_user.id
 
     if current_user_id != invitation.receiver_id:
-        logger.warning(f"Validation error: User '{current_user_id}' is not the receiver of the invitation '{invitation_id}'")
+        logger.warning(f"Permission error: User \"{current_user_id}\" is not the receiver of the invitation \"{invitation_id}\"")
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
 
     # Decline the invitation 
     await request_crud.delete_company_request(invitation.id)
-    logger.info(f"Successfully declined ivnitation {invitation_id}")
+    logger.info(f"Successfully declined ivnitation \"{invitation_id}\"")
     return {"response": "Invitation was successfully declined"}
 
 
@@ -120,8 +123,9 @@ async def decline_invitation(invitation_id: int,
 async def request_company_membership(company_id: int,
                                      session: AsyncSession = Depends(get_async_session),
                                      auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:
-    logger.info(f"Trying to send membership request to the company {company_id}")
-    # Initialize services repositories
+    logger.info(f"Sending membership request to the company \"{company_id}\"")
+
+    # Initialize services 
     request_crud = CompanyRequestsRepository(session)
     company_crud = CompanyRepository(session)
     user_crud = UserRepository(session)
@@ -133,17 +137,17 @@ async def request_company_membership(company_id: int,
     # Validate if requested company exists
     request_company = await company_crud.get_company_by_id(company_id, auth["email"])
     if not request_company:
-        logger.warning(f"Company '{company_id}' is not found")
+        logger.warning(f"Company \"{company_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested company is not found"))
 
     # Validate if user is already a member of the requested company
     if await company_crud.check_user_membership(current_user_id, company_id):
-        logger.warning(f"Current user is already a member fo the requested company '{company_id}'")
+        logger.warning(f"Current user is already a member fo the requested company \"{company_id}\"")
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("You are already a member of this company"))
 
     # Send request
     await request_crud.send_company_request(company=request_company, sender_id=current_user_id, receiver_id=None)
-    logger.info(f"Successfully sent membership request to the company {company_id}")
+    logger.info(f"Successfully sent membership request to the company \"{company_id}\"")
     return {"response": "Membership request was successfully sent"}
 
 
@@ -151,15 +155,16 @@ async def request_company_membership(company_id: int,
 async def request_company_membership_cancel(request_id: int,
                                      session: AsyncSession = Depends(get_async_session),
                                      auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:  
-    logger.info(f"Trying to cancel membership request {request_id}")
-    # Initialize services repositories
+    logger.info(f"Cancelling membership request \"{request_id}\"")
+
+    # Initialize services 
     request_crud = CompanyRequestsRepository(session)
     user_crud = UserRepository(session)
 
     # Get request
     request = await request_crud.get_request_by_id(request_id)
     if not request:
-        logger.warning(f"Company request '{request_id}' is not found")
+        logger.warning(f"Company request \"{request_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Membership request is not found"))
     
     # Retrieving current user id
@@ -167,12 +172,12 @@ async def request_company_membership_cancel(request_id: int,
     current_user_id = auth.get("id") if not current_user else current_user.id
 
     if current_user_id != request.sender_id:
-        logger.warning(f"Validation error: User '{current_user_id}' is not the sender of the membership request '{request_id}'")
+        logger.warning(f"Permission error: User \"{current_user_id}\" is not the sender of the membership request \"{request_id}\"")
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
 
     # Cancel the request
     await request_crud.delete_company_request(request_id)
-    logger.info(f"Successfully canceled membership request {request_id}")
+    logger.info(f"Successfully canceled membership request \"{request_id}\"")
     return {"response": "Membership request was successfully canceled"}
 
 
@@ -180,15 +185,16 @@ async def request_company_membership_cancel(request_id: int,
 async def accept_request(request_id: int,
                             session: AsyncSession = Depends(get_async_session),
                             auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:
-    logger.info(f"Trying to accept membership request {request_id}")
-    # Initialize services repositories
+    logger.info(f"Accepting membership request \"{request_id}\"")
+
+    # Initialize services 
     request_crud = CompanyRequestsRepository(session)
     user_crud = UserRepository(session)
 
     # Get request
     request = await request_crud.get_request_by_id(request_id)
     if not request:
-        logger.warning(f"Company request '{request_id}' is not found")
+        logger.warning(f"Company request \"{request_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Membership request is not found"))
     
     # Retrieving current user id
@@ -196,12 +202,12 @@ async def accept_request(request_id: int,
     current_user_id = auth.get("id") if not current_user else current_user.id
 
     if current_user_id != request.receiver_id:
-        logger.warning(f"Validation error: User '{current_user_id}' is not the receiver of the membership request '{request_id}'")
+        logger.warning(f"Permission error: User \"{current_user_id}\" is not the receiver of the membership request \"{request_id}\"")
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
 
     # Accept the invitation 
     await request_crud.accept_company_request(request, is_invitation=False)
-    logger.info(f"Successfully accepted membership request {request_id}")
+    logger.info(f"Successfully accepted membership request \"{request_id}\"")
     return {"response": "Membership request was successfully accepted"}
 
 
@@ -209,15 +215,16 @@ async def accept_request(request_id: int,
 async def decline_request(request_id: int,
                             session: AsyncSession = Depends(get_async_session),
                             auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:
-    logger.info(f"Trying to decline membership request {request_id}")
-    # Initialize services repositories
+    logger.info(f"Declining membership request \"{request_id}\"")
+
+    # Initialize services 
     request_crud = CompanyRequestsRepository(session)
     user_crud = UserRepository(session)
 
     # Get request
     invitation = await request_crud.get_request_by_id(request_id)
     if not invitation:
-        logger.warning(f"Company request '{request_id}' is not found")
+        logger.warning(f"Company request \"{request_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Membership request is not found"))
     
     # Retrieving current user id
@@ -225,10 +232,10 @@ async def decline_request(request_id: int,
     current_user_id = auth.get("id") if not current_user else current_user.id
 
     if current_user_id != invitation.receiver_id:
-        logger.warning(f"Validation error: User '{current_user_id}' is not the receiver of the request '{request_id}'")
+        logger.warning(f"Permission error: User \"{current_user_id}\" is not the receiver of the request \"{request_id}\"")
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
 
     # Decline the invitation 
     await request_crud.delete_company_request(invitation.id)
-    logger.info(f"Successfully declined membership request {request_id}")
+    logger.info(f"Successfully declined membership request \"{request_id}\"")
     return {"response": "Membership request was successfully declined"}

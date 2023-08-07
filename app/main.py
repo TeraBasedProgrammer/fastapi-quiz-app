@@ -17,7 +17,6 @@ from app.users.router import user_router
 
 # Set up logging configuration 
 logging.config.dictConfig(LOGGING_CONFIG)
-logger = logging.getLogger("main_logger")
 
 redis = rd.from_url(settings.redis_url, decode_responses=True, encoding="utf-8", db=0)
 
