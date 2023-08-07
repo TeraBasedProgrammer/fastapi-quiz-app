@@ -120,7 +120,7 @@ async def get_user_by_id(async_session_test) -> Callable[[str], Awaitable[list]]
 async def create_raw_user(async_session_test) -> Callable[[str, str, str], Awaitable[None]]:
     async def create_raw_user(email: str, name: str, password: str) -> None:
         auth = AuthHandler()
-        hashed_password = auth.get_password_hash(password)
+        hashed_password = await auth.get_password_hash(password)
 
         async with async_session_test() as session:
             user = User(
@@ -207,7 +207,7 @@ async def create_default_company_object(create_company_instance,
 async def create_auth_jwt() -> Callable[[str], Awaitable[Jwt]]:
     async def create_auth_jwt(user_email: str) -> Jwt:
         auth = AuthHandler()
-        token = auth.encode_token(user_email)
+        token = await auth.encode_token(user_email)
         return token
 
     return create_auth_jwt

@@ -47,13 +47,13 @@ async def login(user: UserLogin, session: AsyncSession = Depends(get_async_sessi
         logger.warning(f"User with email {user.email} is not registered in the system")
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("User with this email is not registered in the system"))
 
-    verify_password = auth_handler.verify_password(user.password, user_existing_object.password)
+    verify_password = await auth_handler.verify_password(user.password, user_existing_object.password)
     if not verify_password:
         logger.warning(f"Invalid password provided")
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("Invalid password"))
 
     logger.info(f"User {user.email} successfully logged in the system")
-    auth_token = auth_handler.encode_token(user.email)
+    auth_token = await auth_handler.encode_token(user.email, session)
     return {"token": auth_token}
 
 
@@ -76,8 +76,11 @@ async def get_received_invitations(session: AsyncSession = Depends(get_async_ses
     request_crud = CompanyRequestsRepository(session)
     user_crud = UserRepository(session)
     
-    current_user = await user_crud.get_user_by_email(auth["email"])
-    res = await request_crud.get_received_requests(receiver_id=current_user.id, for_company=False)
+    # Retrieving current user id
+    current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
+    user_id = auth.get("id") if not current_user else current_user.id
+
+    res = await request_crud.get_received_requests(receiver_id=user_id, for_company=False)
     logger.info(f"Successfully retrieved current user invitations list")
     return res
 
@@ -90,9 +93,10 @@ async def get_sent_requests(session: AsyncSession = Depends(get_async_session),
     request_crud = CompanyRequestsRepository(session)
     user_crud = UserRepository(session)
     
-    current_user = await user_crud.get_user_by_email(auth["email"])
-    res = await request_crud.get_sent_requests(sender_id=current_user.id, for_company=False)
+    # Retrieving current user id
+    current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
+    user_id = auth.get("id") if not current_user else current_user.id
+
+    res = await request_crud.get_sent_requests(sender_id=user_id, for_company=False)
     logger.info(f"Successfully retrieved current user sent requests list")
     return res
-
-

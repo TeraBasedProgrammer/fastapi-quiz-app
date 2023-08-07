@@ -44,11 +44,12 @@ async def cancel_invitation(invitation_id: int,
         logger.warning(f"Company invitation '{invitation_id}' is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Invitation is not found"))
     
-    # Get current user
-    current_user = await user_crud.get_user_by_email(auth["email"])
+    # Retrieving current user id
+    current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
+    current_user_id = auth.get("id") if not current_user else current_user.id
 
-    if current_user.id != invitation.sender_id:
-        logger.warning(f"Validation error: User '{current_user.id}' is not the sender of the invitation '{invitation_id}'")
+    if current_user_id != invitation.sender_id:
+        logger.warning(f"Validation error: User '{current_user_id}' is not the sender of the invitation '{invitation_id}'")
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
 
     # Cancel the invitation 
@@ -72,11 +73,12 @@ async def accept_invitation(invitation_id: int,
         logger.warning(f"Company invitation '{invitation_id}' is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Invitation is not found"))
     
-    # Get current user
-    current_user = await user_crud.get_user_by_email(auth["email"])
+    # Retrieving current user id
+    current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
+    current_user_id = auth.get("id") if not current_user else current_user.id
 
-    if current_user.id != invitation.receiver_id:
-        logger.warning(f"Validation error: User '{current_user.id}' is not the receiver of the invitation '{invitation_id}'")
+    if current_user_id != invitation.receiver_id:
+        logger.warning(f"Validation error: User '{current_user_id}' is not the receiver of the invitation '{invitation_id}'")
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
 
     # Accept the invitation 
@@ -100,11 +102,12 @@ async def decline_invitation(invitation_id: int,
         logger.warning(f"Company invitation '{invitation_id}' is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Invitation is not found"))
     
-    # Get current user
-    current_user = await user_crud.get_user_by_email(auth["email"])
+    # Retrieving current user id
+    current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
+    current_user_id = auth.get("id") if not current_user else current_user.id
 
-    if current_user.id != invitation.receiver_id:
-        logger.warning(f"Validation error: User '{current_user.id}' is not the receiver of the invitation '{invitation_id}'")
+    if current_user_id != invitation.receiver_id:
+        logger.warning(f"Validation error: User '{current_user_id}' is not the receiver of the invitation '{invitation_id}'")
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
 
     # Decline the invitation 
@@ -123,8 +126,9 @@ async def request_company_membership(company_id: int,
     company_crud = CompanyRepository(session)
     user_crud = UserRepository(session)
 
-    # Get sender user
-    current_user = await user_crud.get_user_by_email(auth["email"])
+    # Retrieving current user id
+    current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
+    current_user_id = auth.get("id") if not current_user else current_user.id
 
     # Validate if requested company exists
     request_company = await company_crud.get_company_by_id(company_id, auth["email"])
@@ -133,12 +137,12 @@ async def request_company_membership(company_id: int,
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested company is not found"))
 
     # Validate if user is already a member of the requested company
-    if await company_crud.check_user_membership(current_user.id, company_id):
+    if await company_crud.check_user_membership(current_user_id, company_id):
         logger.warning(f"Current user is already a member fo the requested company '{company_id}'")
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("You are already a member of this company"))
 
     # Send request
-    await request_crud.send_company_request(company=request_company, sender_id=current_user.id, receiver_id=None)
+    await request_crud.send_company_request(company=request_company, sender_id=current_user_id, receiver_id=None)
     logger.info(f"Successfully sent membership request to the company {company_id}")
     return {"response": "Membership request was successfully sent"}
 
@@ -158,17 +162,19 @@ async def request_company_membership_cancel(request_id: int,
         logger.warning(f"Company request '{request_id}' is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Membership request is not found"))
     
-    # Get current user
-    current_user = await user_crud.get_user_by_email(auth["email"])
+    # Retrieving current user id
+    current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
+    current_user_id = auth.get("id") if not current_user else current_user.id
 
-    if current_user.id != request.sender_id:
-        logger.warning(f"Validation error: User '{current_user.id}' is not the sender of the membership request '{request_id}'")
+    if current_user_id != request.sender_id:
+        logger.warning(f"Validation error: User '{current_user_id}' is not the sender of the membership request '{request_id}'")
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
 
     # Cancel the request
     await request_crud.delete_company_request(request_id)
     logger.info(f"Successfully canceled membership request {request_id}")
     return {"response": "Membership request was successfully canceled"}
+
 
 @request_router.post("/{request_id}/accept", response_model=Optional[Dict[str, str]])
 async def accept_request(request_id: int,
@@ -185,11 +191,12 @@ async def accept_request(request_id: int,
         logger.warning(f"Company request '{request_id}' is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Membership request is not found"))
     
-    # Get current user
-    current_user = await user_crud.get_user_by_email(auth["email"])
+    # Retrieving current user id
+    current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
+    current_user_id = auth.get("id") if not current_user else current_user.id
 
-    if current_user.id != request.receiver_id:
-        logger.warning(f"Validation error: User '{current_user.id}' is not the receiver of the membership request '{request_id}'")
+    if current_user_id != request.receiver_id:
+        logger.warning(f"Validation error: User '{current_user_id}' is not the receiver of the membership request '{request_id}'")
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
 
     # Accept the invitation 
@@ -213,11 +220,12 @@ async def decline_request(request_id: int,
         logger.warning(f"Company request '{request_id}' is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Membership request is not found"))
     
-    # Get current user
-    current_user = await user_crud.get_user_by_email(auth["email"])
+    # Retrieving current user id
+    current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
+    current_user_id = auth.get("id") if not current_user else current_user.id
 
-    if current_user.id != invitation.receiver_id:
-        logger.warning(f"Validation error: User '{current_user.id}' is not the receiver of the request '{request_id}'")
+    if current_user_id != invitation.receiver_id:
+        logger.warning(f"Validation error: User '{current_user_id}' is not the receiver of the request '{request_id}'")
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
 
     # Decline the invitation 

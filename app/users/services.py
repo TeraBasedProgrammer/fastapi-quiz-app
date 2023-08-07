@@ -31,7 +31,7 @@ class UserRepository:
         new_user = User(
            **user_data.model_dump() 
         )
-        new_user.password = self.auth.get_password_hash(new_user.password)
+        new_user.password = await self.auth.get_password_hash(new_user.password)
         new_user.companies = []
         logger.debug(f"Enctypted the password: {new_user.password[:10]}...")
         if auth0:
@@ -99,13 +99,13 @@ class UserRepository:
         user_existing_object = await self.get_user_by_email(user_email)
         if not user_existing_object:
             logger.info("User with provided email hasn't been registered yet, creating new instance")
-            await self.create_user(user_data=UserSignUpAuth0(email=user_email, password=f"pass{datetime.now().strftime('%Y%m%d%H%M%S')}", auth0_registered=True))
-            return
+            new_user = await self.create_user(user_data=UserSignUpAuth0(email=user_email, password=f"pass{datetime.now().strftime('%Y%m%d%H%M%S')}", auth0_registered=True))
+            return new_user
         if user_existing_object.auth0_registered:
             logger.info("User with provided email has been registered using Auth0, pass")
             return
         if not user_existing_object.auth0_registered:
-            logger.error("Error: user with provided email has been registered using logging-password way")
+            logger.warning("Error: user with provided email has been registered using logging-password way")
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("User with is email has already been registered. Try to register with another email"))
 
 
