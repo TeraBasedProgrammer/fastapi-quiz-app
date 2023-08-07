@@ -162,14 +162,14 @@ class CompanyRepository:
         return response
 
 
-    async def set_admin_role(self, company_id: int, user_id: int) -> None:
+    async def set_role(self, company_id: int, user_id: int, role: RoleEnum) -> None:
         logger.debug(f"Received data:\ncompany_id -> {company_id}\nuser_id -> {user_id}")
         query = (
             update(CompanyUser)
             .where((CompanyUser.user_id == user_id) & (CompanyUser.company_id == company_id))
-            .values({"role": RoleEnum.Admin})
+            .values({"role": role})
         )
         res = await self.db_session.execute(query)
         await self.db_session.commit()
         logger.debug(f"Successfully set admin role for user {user_id} in company {company_id}")
-    
+         

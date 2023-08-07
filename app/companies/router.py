@@ -15,6 +15,7 @@ from app.database import get_async_session
 from app.schemas import CompanyFullSchema
 from app.users.schemas import DeletedInstanceResponse, UserSchema
 from app.users.services import UserRepository, error_handler
+from app.companies.models import RoleEnum
 
 from .schemas import CompanyCreate, CompanyUpdate
 from .services import CompanyRepository
@@ -189,7 +190,7 @@ async def kick_user(company_id: int,
         logger.warning(f"Validation error: User \"{current_user_id}\" tried to kick itself from the company")
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("You can't kick yourself from the company"))
     
-    # Validate if user have permission to kick another user
+    # Validate if user has permission to kick another user
     if await company_crud.user_is_admin(current_user_id, request_company.id) and \
     (await company_crud.user_is_admin(user_id, request_company.id) or \
     await company_crud.user_is_owner(user_id, request_company.id)):
@@ -312,8 +313,56 @@ async def give_admin_role(company_id: int,
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler(f"User {request_user.email} is already an admin in the company {company.title}"))
     
     # Set admin
-    await company_crud.set_admin_role(user_id=user_id, company_id=company_id)
-    logger.info(f"User {user_id} was successfuly assigned as admin")
+    await company_crud.set_role(user_id=user_id, company_id=company_id, role=RoleEnum.Admin)
+    logger.info(f"User \"{user_id}\" was successfuly assigned as admin")
     
     return {"response": f"User {request_user.email} was successfuly assigned as admin"}
+    
+
+@company_router.get("/{company_id}/unset-admin/{user_id}", response_model=Optional[Dict[str, str]])
+async def take_admin_role(company_id: int, 
+                          user_id: int,
+                          session: AsyncSession = Depends(get_async_session),
+                          auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:
+    logger.info(f"Unsetting the admin role for the user \"{user_id}\" in the company \"{company_id}\"")
+
+    # Initialize services 
+    user_crud = UserRepository(session)
+    company_crud = CompanyRepository(session)
+
+    company = await company_crud.get_company_by_id(company_id, auth["email"], owner_only=True)
+    if not company:
+        logger.warning(f"Company \"{company_id}\" is not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested company is not found"))
+    
+    # Retrieving current user id
+    current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
+    current_user_id = auth.get("id") if not current_user else current_user.id
+    print(current_user_id)
+
+    # Check if requested user is not yourself
+    if current_user_id == user_id:
+        logger.warning(f"Validation error: User \"{current_user_id}\" requested itself")
+        return HTTPException(status.HTTP_400_BAD_REQUEST, detail=("You can't change your own role"))
+
+    request_user = await user_crud.get_user_by_id(user_id)
+    if not request_user:
+        logger.warning(f"User \"{user_id}\" is not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested user is not found"))
+    
+    # Check if requested user is the member of the company
+    if not await company_crud.check_user_membership(user_id, company_id):
+        logger.warning(f"User \"{request_user}\" is not the member of the company \"{company}\"") 
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler(f"User {request_user.email} is not the member of the company {company.title}"))
+
+    # Check if user is an admin
+    if not await company_crud.user_is_admin(user_id=user_id, company_id=company_id):
+        logger.warning(f"User \"{request_user}\" is not an admin in the company \"{company}\"")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler(f"User {request_user.email} is already an admin in the company {company.title}"))
+    
+    # Set admin
+    await company_crud.set_role(user_id=user_id, company_id=company_id, role=RoleEnum.Member)
+    logger.info(f"The admin role has been taken away from the user \"{request_user.email}\"")
+    
+    return {"response": f"The admin role has been taken away from the user {request_user.email}"}
     
