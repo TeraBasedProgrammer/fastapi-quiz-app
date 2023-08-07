@@ -186,9 +186,16 @@ async def kick_user(company_id: int,
     current_user_id = auth.get("id") if not current_user else current_user.id
 
     if user_id == current_user_id:
-        logger.warning(f"Validation error: User \"{request_user}\" tried to kick itself from the company")
+        logger.warning(f"Validation error: User \"{current_user_id}\" tried to kick itself from the company")
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("You can't kick yourself from the company"))
     
+    # Validate if user have permission to kick another user
+    if await company_crud.user_is_admin(current_user_id, request_company.id) and \
+    (await company_crud.user_is_admin(user_id, request_company.id) or \
+    await company_crud.user_is_owner(user_id, request_company.id)):
+        logger.warning(f"Permission error: User \"{current_user_id}\" tried to kick admin or owner")
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("You don't have permission to perform this action"))
+
     # Kick user
     await request_crud.remove_user_from_company(company_id=company_id, user_id=user_id)
     logger.info(f"Successfully kicked user \"{request_user}\" from the company \"{request_company}\"")
