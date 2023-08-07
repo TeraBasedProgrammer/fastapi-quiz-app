@@ -131,7 +131,7 @@ async def test_login(client: httpx.AsyncClient, create_user_instance: Callable[.
     "user_data, error_response",
     (
         (
-            {"email": "not_registered@gmail,com", "password": "password123"},
+            {"email": "not_registered@gmail.com", "password": "password123"},
             {"detail": {"error": "User with this email is not registered in the system"}}
         ),
         (

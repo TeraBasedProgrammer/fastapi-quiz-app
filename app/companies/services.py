@@ -54,7 +54,6 @@ class CompanyRepository:
                 if not admin_user:
                     logger.warning(f"User {current_user_email} is not an admin of the company, abort")
                     raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
-        print(company.__dict__)
         return company 
 
 

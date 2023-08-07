@@ -204,10 +204,11 @@ async def create_default_company_object(create_company_instance,
 
 
 @pytest.fixture(scope="function")
-async def create_auth_jwt() -> Callable[[str], Awaitable[Jwt]]:
+async def create_auth_jwt(async_session_test) -> Callable[[str], Awaitable[Jwt]]:
     async def create_auth_jwt(user_email: str) -> Jwt:
-        auth = AuthHandler()
-        token = await auth.encode_token(user_email)
-        return token
+        async with async_session_test() as session:
+            auth = AuthHandler()
+            token = await auth.encode_token(user_email, session)
+            return token
 
     return create_auth_jwt
