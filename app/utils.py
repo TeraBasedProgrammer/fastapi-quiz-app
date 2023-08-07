@@ -1,6 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
-
 # Global business logic instance (should be used only to avoid circular imports in other files)
 
 async def get_global_user_crud(session: AsyncSession):

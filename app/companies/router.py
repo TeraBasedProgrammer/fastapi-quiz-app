@@ -1,13 +1,14 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-from starlette import status
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi_pagination import Page, Params, paginate
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette import status
 
 from app.auth.handlers import AuthHandler
+from app.companies.models import RoleEnum
 from app.company_requests.schemas import (CompanyInvitationSchema,
                                           CompanyRequestSchema)
 from app.company_requests.services import CompanyRequestsRepository
@@ -15,7 +16,6 @@ from app.database import get_async_session
 from app.schemas import CompanyFullSchema
 from app.users.schemas import DeletedInstanceResponse, UserSchema
 from app.users.services import UserRepository, error_handler
-from app.companies.models import RoleEnum
 
 from .schemas import CompanyCreate, CompanyUpdate
 from .services import CompanyRepository
@@ -40,7 +40,7 @@ async def get_all_companies(session: AsyncSession = Depends(get_async_session),
     result = await company_crud.get_companies() 
     logger.info("All companies have been successfully retrieved")
 
-    response = [CompanyFullSchema.from_model(c) for c in await filter_companies_response(result)]
+    response = [await CompanyFullSchema.from_model(c) for c in await filter_companies_response(result)]
     return paginate(response, params)
 
 
@@ -49,13 +49,22 @@ async def get_company(company_id: int,
                       session: AsyncSession = Depends(get_async_session),
                       auth=Depends(auth_handler.auth_wrapper)) -> Optional[CompanyFullSchema]:
     logger.info(f"Retrieving Company instance by id \"{company_id}\"")
+
+    # Intialize services
+    user_crud = UserRepository(session)
     company_crud = CompanyRepository(session)
+
     company = await company_crud.get_company_by_id(company_id, auth["email"])
     if not company:
         logger.warning(f"Company \"{company_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, error_handler("Company is not found"))
+
+    # Retrieving current user id
+    current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
+    current_user_id = auth.get("id") if not current_user else current_user.id 
+
     logger.info(f"Successfully retrieved Company instance \"{company}\"")
-    return CompanyFullSchema.from_model(company)
+    return await CompanyFullSchema.from_model(company, single_company_request=True)
 
 
 @company_router.post("/", response_model=Optional[Dict[str, Any]], status_code=201, response_model_exclude_none=True)
@@ -90,7 +99,7 @@ async def update_company(company_id: int, body: CompanyUpdate,
             raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Company is not found"))
          
         logger.info(f"Company \"{company_for_update}\" have been successfully updated")
-        return CompanyFullSchema.from_model(await company_crud.update_company(company_id, body))
+        return await CompanyFullSchema.from_model(await company_crud.update_company(company_id, body))
     except IntegrityError:
         logger.warning(f"Validation error: Company with provided title already exists")
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("Company with this title already exists"))
@@ -366,3 +375,39 @@ async def take_admin_role(company_id: int,
     
     return {"response": f"The admin role has been taken away from the user {request_user.email}"}
     
+
+@company_router.delete("/{company_id}/leave", response_model=Optional[Dict[str, str]])
+async def leave_company(company_id: int,
+                        session: AsyncSession = Depends(get_async_session),
+                        auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:
+    logger.info(f"Leaving company \"{company_id}\"")
+
+    # Initialize services 
+    request_crud = CompanyRequestsRepository(session)
+    company_crud = CompanyRepository(session)
+    user_crud = UserRepository(session)
+
+    # Validate if requested instances exist
+    request_company = await company_crud.get_company_by_id(company_id, auth["email"])
+    if not request_company:
+        logger.warning(f"Company \"{company_id}\" is not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested company is not found"))
+
+    # Retrieving current user id
+    current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
+    current_user_id = auth.get("id") if not current_user else current_user.id
+
+    # Validate if user is member of the company
+    if not await company_crud.check_user_membership(user_id=current_user_id, company_id=company_id):
+        logger.warning(f"User \"{current_user_id}\" is not the member of the company \"{request_company}\"") 
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler(f"User {current_user_id} is not the member of the company {company_id}"))
+    
+    # Validate if user isn't the owner of the company
+    if await company_crud.user_is_owner(user_id=current_user_id, company_id=company_id):
+        logger.warning("Validation error: Owner can't leave its company")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("Owner can't leave its company"))
+     
+    # Leave the company
+    await request_crud.remove_user_from_company(company_id=company_id, user_id=current_user_id)
+    logger.info(f"Successfully left company \"{company_id}\"")
+    return {"response": f"You have successfully left company {company_id}"}

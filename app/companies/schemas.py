@@ -3,9 +3,9 @@ import re
 from datetime import datetime
 from typing import Optional
 
-from starlette import status
 from fastapi import HTTPException
 from pydantic import BaseModel, Field, field_validator
+from starlette import status
 
 from .models import RoleEnum
 
@@ -30,6 +30,7 @@ class CompanySchema(CompanyBase):
     id: int 
     created_at: datetime
     role: Optional[RoleEnum] = Field(None, nullable=True)
+    is_hidden: bool
     
     class Config:
         from_attributes = True

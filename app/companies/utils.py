@@ -1,6 +1,7 @@
 import logging
 
 from app.companies.models import Company
+
 from .models import Company
 
 logger = logging.getLogger("main_logger")

@@ -1,9 +1,9 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-from starlette import status
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette import status
 
 from app.company_requests.schemas import (UserInvitationSchema,
                                           UserRequestSchema)
@@ -66,7 +66,7 @@ async def get_current_user(session: AsyncSession = Depends(get_async_session),
     current_user = await crud.get_user_by_email(auth['email'])
 
     logger.info(f"Successfully returned current user info")
-    return UserFullSchema.from_model(current_user, public_request=False)
+    return await UserFullSchema.from_model(current_user, public_request=False)
 
 
 @auth_router.get("/me/invitations", response_model=Optional[List[UserInvitationSchema]], response_model_exclude_none=True)

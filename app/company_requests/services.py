@@ -1,12 +1,12 @@
 import logging
 from typing import Dict, List, Optional
 
-from starlette import status
 from fastapi import HTTPException
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
+from starlette import status
 
 from app.companies.models import Company, CompanyUser, RoleEnum
 from app.users.models import User

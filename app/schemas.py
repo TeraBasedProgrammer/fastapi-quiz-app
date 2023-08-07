@@ -1,14 +1,28 @@
 from typing import List, Optional
 
-from .companies.schemas import CompanySchema
-from .users.schemas import UserSchema
+from fastapi import HTTPException, Depends
+from starlette import status
+
+
+from app.companies.schemas import CompanySchema
+from app.users.schemas import UserSchema
+from app.companies.services import CompanyRepository
+from app.database import get_async_session
+from app.users.services import error_handler
 
 
 class UserFullSchema(UserSchema):
     companies: Optional[List[CompanySchema]] = []
      
     @classmethod
-    def from_model(cls, user_model, public_request=True):
+    async def from_model(cls, user_model, public_request=True):
+        """
+        Wraps raw user data into pydantic-friendly model
+        @param user_model: raw user object
+        @param public_request: indicates wether hidden 
+        companies should be included into related company list or not
+        """
+
         return cls(
             id=user_model.id,
             name=user_model.name,
@@ -21,6 +35,7 @@ class UserFullSchema(UserSchema):
                     title=company.companies.title,
                     description=company.companies.description,
                     created_at=company.companies.created_at,
+                    is_hidden=company.companies.is_hidden,
                     role=company.role,
                 )
                 for company in user_model.companies 
@@ -33,8 +48,25 @@ class CompanyFullSchema(CompanySchema):
     users: Optional[List[UserSchema]] = []
 
     @classmethod
-    def from_model(cls, company_model, public_request=True):
-        if company_model.is_hidden and public_request:
+    async def from_model(cls, company_model, public_request=True, single_company_request=False):
+        """
+        Wraps raw company data into pydantic-friendly model
+        @param company_model: raw company object
+        @param public_request: indicates wether hidden 
+        companies should be returned or not
+        @param user_id: optional int param to validate wether to give access to the hidden company
+        (check if user is member of the company or not)
+        """
+
+        # Check whether we should give access to the user "user_id" or not
+        # if user_id:
+        #     async for session in get_async_session():
+        #         company_crud = CompanyRepository(session)
+        #         if not await company_crud.check_user_membership(user_id, company_model.id):
+        #             raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Company is not found"))
+        #         break
+
+        if company_model.is_hidden and public_request and not single_company_request:
             return []
         
         return cls(
@@ -42,6 +74,7 @@ class CompanyFullSchema(CompanySchema):
             title=company_model.title,
             description=company_model.description,
             created_at=company_model.created_at,
+            is_hidden=company_model.is_hidden,
             users=[
                 UserSchema(
                     id=user.users.id,

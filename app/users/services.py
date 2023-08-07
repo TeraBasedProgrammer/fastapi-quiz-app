@@ -2,12 +2,12 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from starlette import status
 from fastapi import HTTPException
 from pydantic import EmailStr
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
+from starlette import status
 
 from app.auth.handlers import AuthHandler
 from app.auth.schemas import UserSignUp, UserSignUpAuth0

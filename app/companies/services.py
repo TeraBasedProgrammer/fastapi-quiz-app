@@ -1,17 +1,17 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-from starlette import status
 from fastapi import HTTPException
 from pydantic import EmailStr
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
+from starlette import status
 
 from app.auth.handlers import AuthHandler
 from app.companies.models import Company, CompanyUser, RoleEnum
-from app.users.services import UserRepository, error_handler
 from app.users.models import User
+from app.users.services import UserRepository, error_handler
 
 from .schemas import CompanyCreate, CompanyUpdate
 

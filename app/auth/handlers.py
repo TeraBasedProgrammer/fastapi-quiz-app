@@ -2,11 +2,11 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 
 import jwt
-from starlette import status
 from fastapi import Depends, HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette import status
 
 from app.config import Settings, settings
 from app.database import get_async_session

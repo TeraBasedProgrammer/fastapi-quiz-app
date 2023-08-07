@@ -1,9 +1,9 @@
 import logging
 from typing import Dict, Optional
 
-from starlette import status
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette import status
 
 from app.auth.handlers import AuthHandler
 from app.companies.services import CompanyRepository
