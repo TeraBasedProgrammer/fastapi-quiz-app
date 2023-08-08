@@ -82,7 +82,7 @@ async def get_received_invitations(session: AsyncSession = Depends(get_async_ses
     current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
     user_id = auth.get("id") if not current_user else current_user.id
 
-    res = await request_crud.get_received_requests(receiver_id=user_id, for_company=False)
+    res = await request_crud.get_received_requests(receiver_id=user_id)
     logger.info(f"Successfully retrieved current user invitations list")
     return res
 
@@ -100,6 +100,6 @@ async def get_sent_requests(session: AsyncSession = Depends(get_async_session),
     current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
     user_id = auth.get("id") if not current_user else current_user.id
 
-    res = await request_crud.get_sent_requests(sender_id=user_id, for_company=False)
+    res = await request_crud.get_sent_requests(sender_id=user_id)
     logger.info(f"Successfully retrieved current user sent requests list")
     return res

@@ -128,28 +128,16 @@ class CompanyRepository:
             return True
         logger.debug(f"User {user_id} is not a member of the company {company_id}")
         
-
-    async def user_is_owner(self, user_id: int, company_id: int) -> Optional[bool]:
-        logger.debug(f"Received data:\ncompany_id -> {company_id}\nuser_id -> {user_id}")
+ 
+    async def user_has_role(self, user_id: int, company_id: int, role: RoleEnum) -> Optional[bool]:
+        logger.debug(f"Received data:\ncompany_id -> {company_id}\nuser_id -> {user_id}\nrole -> {role}")
         result = await self.db_session.execute(select(CompanyUser).where((CompanyUser.company_id == company_id) & (CompanyUser.user_id == user_id)))
         
         data = result.scalar_one_or_none()
-        if data.role == RoleEnum.Owner:
-            logger.debug(f"User {user_id} is the owner of the company {company_id}")
+        if data.role == role:
+            logger.debug(f"User {user_id} is the {role} in the company {company_id}")
             return True
-        logger.debug(f"User {user_id} is not the owner of the company {company_id}")
-
-
-    async def user_is_admin(self, user_id: int, company_id: int) -> Optional[bool]:
-        logger.debug(f"Received data:\ncompany_id -> {company_id}\nuser_id -> {user_id}")
-        result = await self.db_session.execute(select(CompanyUser).where((CompanyUser.company_id == company_id) & (CompanyUser.user_id == user_id)))
-        
-        data = result.scalar_one_or_none()
-        if data.role == RoleEnum.Admin:
-            logger.debug(f"User {user_id} is admin in the company {company_id}")
-            return True
-        logger.debug(f"User {user_id} is not admin in the company {company_id}")
-            
+        logger.debug(f"User {user_id} is not the {role} in the company {company_id}")      
 
     async def get_admins(self, company_id: int) -> List[User]:
         logger.debug(f"Received data:\ncompany_id -> {company_id}")

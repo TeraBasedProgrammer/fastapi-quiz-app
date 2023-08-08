@@ -9,6 +9,7 @@ from app.auth.handlers import AuthHandler
 from app.companies.services import CompanyRepository
 from app.database import get_async_session
 from app.users.services import UserRepository, error_handler
+from app.companies.models import RoleEnum
 
 from .services import CompanyRequestsRepository
 
@@ -38,6 +39,7 @@ async def cancel_invitation(invitation_id: int,
     # Initialize services repositories
     request_crud = CompanyRequestsRepository(session)
     user_crud = UserRepository(session)
+    company_crud = CompanyRepository(session)
 
     # Get invitation
     invitation = await request_crud.get_request_by_id(invitation_id)
@@ -49,8 +51,9 @@ async def cancel_invitation(invitation_id: int,
     current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
     current_user_id = auth.get("id") if not current_user else current_user.id
 
-    if current_user_id != invitation.sender_id:
-        logger.warning(f"Permission error: User \"{current_user_id}\" is not the sender of the invitation \"{invitation_id}\"")
+    # Check if user has permission to cancel the invitation
+    if await company_crud.user_has_role(current_user_id, invitation.company_id, RoleEnum.Member): 
+        logger.warning(f"Permission error: User \"{current_user_id}\" doesn't have permission to cancel invitation \"{invitation_id}\"")
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
 
     # Cancel the invitation 
@@ -145,6 +148,11 @@ async def request_company_membership(company_id: int,
         logger.warning(f"Current user is already a member fo the requested company \"{company_id}\"")
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("You are already a member of this company"))
 
+    # Validate if user haven't received an invitation from the requested company yet
+    if await request_crud.check_existing_request(company_id=company_id, receiver_id=current_user_id):
+        logger.warning(f"Permission error: User \"{current_user_id}\" have already received invitation to the company \"{company_id}\"")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler(f"You have already received invitation to the company {company_id}"))
+
     # Send request
     await request_crud.send_company_request(company=request_company, sender_id=current_user_id, receiver_id=None)
     logger.info(f"Successfully sent membership request to the company \"{company_id}\"")
@@ -190,6 +198,7 @@ async def accept_request(request_id: int,
     # Initialize services 
     request_crud = CompanyRequestsRepository(session)
     user_crud = UserRepository(session)
+    company_crud = CompanyRepository()
 
     # Get request
     request = await request_crud.get_request_by_id(request_id)
@@ -201,8 +210,9 @@ async def accept_request(request_id: int,
     current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
     current_user_id = auth.get("id") if not current_user else current_user.id
 
-    if current_user_id != request.receiver_id:
-        logger.warning(f"Permission error: User \"{current_user_id}\" is not the receiver of the membership request \"{request_id}\"")
+    # Check if user has permission to cancel the invitation
+    if await company_crud.user_has_role(current_user_id, request.company_id, RoleEnum.Member): 
+        logger.warning(f"Permission error: User \"{current_user_id}\" doesn't have permission to accept request \"{request_id}\"")
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
 
     # Accept the invitation 
@@ -220,6 +230,7 @@ async def decline_request(request_id: int,
     # Initialize services 
     request_crud = CompanyRequestsRepository(session)
     user_crud = UserRepository(session)
+    company_crud = CompanyRepository(session)
 
     # Get request
     invitation = await request_crud.get_request_by_id(request_id)
@@ -231,8 +242,9 @@ async def decline_request(request_id: int,
     current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
     current_user_id = auth.get("id") if not current_user else current_user.id
 
-    if current_user_id != invitation.receiver_id:
-        logger.warning(f"Permission error: User \"{current_user_id}\" is not the receiver of the request \"{request_id}\"")
+    # Validate if user is already a member of the requested company
+    if await company_crud.user_has_role(current_user_id, invitation.company_id, RoleEnum.Member):
+        logger.warning(f"Permission error: User \"{current_user_id}\" doesn't have permission to decline request \"{request_id}\"")
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
 
     # Decline the invitation 

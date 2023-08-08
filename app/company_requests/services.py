@@ -5,7 +5,6 @@ from fastapi import HTTPException
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import aliased
 from starlette import status
 
 from app.companies.models import Company, CompanyUser, RoleEnum
@@ -31,15 +30,22 @@ class CompanyRequestsRepository:
         return owner_id
 
 
-    async def send_company_request(self, company: Company, sender_id: int, receiver_id: int) -> None:
-        try:
-            if not receiver_id:
-                receiver_id = await self._get_company_onwer_id(company.id)
-            new_company_request = CompanyRequest(company_id=company.id, sender_id=sender_id, receiver_id=receiver_id)
-            self.db_session.add(new_company_request)
-            await self.db_session.commit()
-        except IntegrityError:
+    async def check_existing_request(self, 
+                                     company_id: int, 
+                                     receiver_id: Optional[int] = None, 
+                                     sender_id: Optional[int] = None) -> Optional[bool]:
+        where_clause = (CompanyRequest.receiver_id == receiver_id) if receiver_id else (CompanyRequest.sender_id == sender_id)
+        request = await self.db_session.execute(select(CompanyRequest).where((CompanyRequest.company_id == company_id) & where_clause))
+        if request.scalar_one_or_none():
+            return True
+
+
+    async def send_company_request(self, company: Company, sender_id: Optional[int], receiver_id: Optional[int]) -> None:
+        if await self.check_existing_request(company_id=company.id, sender_id=sender_id, receiver_id=receiver_id):
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("You've already sent a request to this user / company"))
+        new_company_request = CompanyRequest(company_id=company.id, sender_id=sender_id, receiver_id=receiver_id)
+        self.db_session.add(new_company_request)
+        await self.db_session.commit()
 
 
     async def delete_company_request(self, request_id: int) -> None:
@@ -81,16 +87,16 @@ class CompanyRequestsRepository:
         return result.scalar_one_or_none()
 
 
-    async def get_received_requests(self, receiver_id: int, 
-                                    for_company: bool) -> List[Optional[Dict[int, Company]]] | List[Optional[Dict[int, User]]]:
-        logger.debug(f"Received data:\nreceiver_id -> {receiver_id}\nfor_company -> {for_company}")
+    async def get_received_requests(self, receiver_id: Optional[int] = None, 
+                                    company_id: Optional[int] = None) -> List[Optional[Dict[int, Company]]] | List[Optional[Dict[int, User]]]:
+        logger.debug(f"Received data:\nreceiver_id -> {receiver_id}\ncompany_id -> {company_id}")
 
         subquery = select(CompanyUser.company_id).where(CompanyUser.user_id == receiver_id)
-        if for_company:
+        if company_id:
             # Requests received by company from user
             query = await self.db_session.execute(select(CompanyRequest.id, User)
                 .join(User, CompanyRequest.sender_id == User.id)
-                .where((CompanyRequest.receiver_id == receiver_id) & (CompanyRequest.company_id.in_(subquery))))
+                .where((CompanyRequest.company_id == company_id) & (CompanyRequest.receiver_id == None)))
 
             response_data = [{'request_id': item[0], 'user': item[1]} for item in query.all()]
             logger.debug(f"Successfully retrieved company requests: {response_data}")
@@ -105,15 +111,16 @@ class CompanyRequestsRepository:
             logger.debug(f"Successfully retrieved user invitations: {response_data}")
             return response_data
 
-    async def get_sent_requests(self, sender_id: int, 
-                                for_company: bool)  -> List[Optional[Dict[int, Company]]] | List[Optional[Dict[int, User]]]:
-        logger.debug(f"Received data:\nsender_id -> {sender_id}\nfor_company -> {for_company}")
+
+    async def get_sent_requests(self, sender_id: Optional[int] = None, 
+                                company_id: Optional[int] = None)  -> List[Optional[Dict[int, Company]]] | List[Optional[Dict[int, User]]]:
+        logger.debug(f"Received data:\nsender_id -> {sender_id}\ncompany_id -> {company_id}")
         subquery = select(CompanyUser.company_id).where(CompanyUser.user_id == sender_id)
         # Invitations sent by company 
-        if for_company:
+        if company_id:
             query = await self.db_session.execute(select(CompanyRequest.id, User)
                 .join(User, CompanyRequest.receiver_id == User.id)
-                .where((CompanyRequest.sender_id == sender_id) & (CompanyRequest.company_id.in_(subquery))))
+                .where((CompanyRequest.company_id == company_id) & (CompanyRequest.sender_id == None)))
 
             response_data = [{'invitation_id': item[0], 'user': item[1]} for item in query.all()]
             logger.debug(f"Successfully retrieved company invitations: {response_data}")
@@ -127,3 +134,5 @@ class CompanyRequestsRepository:
             response_data = [{'request_id': item[0], 'company': item[1]} for item in query.all()]
             logger.debug(f"Successfully retrieved user requests: {response_data}")
             return response_data
+
+

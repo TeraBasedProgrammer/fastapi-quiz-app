@@ -51,17 +51,12 @@ async def get_company(company_id: int,
     logger.info(f"Retrieving Company instance by id \"{company_id}\"")
 
     # Intialize services
-    user_crud = UserRepository(session)
     company_crud = CompanyRepository(session)
 
     company = await company_crud.get_company_by_id(company_id, auth["email"])
     if not company:
         logger.warning(f"Company \"{company_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, error_handler("Company is not found"))
-
-    # Retrieving current user id
-    current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
-    current_user_id = auth.get("id") if not current_user else current_user.id 
 
     logger.info(f"Successfully retrieved Company instance \"{company}\"")
     return await CompanyFullSchema.from_model(company, single_company_request=True)
@@ -137,10 +132,6 @@ async def invite_user(company_id: int,
     company_crud = CompanyRepository(session)
     user_crud = UserRepository(session)
 
-    # Retrieving current user id
-    current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
-    current_user_id = auth.get("id") if not current_user else current_user.id 
-
     # Validate if requested instances exist
     request_company = await company_crud.get_company_by_id(company_id, auth["email"], admin_only=True)
     if not request_company:
@@ -156,9 +147,14 @@ async def invite_user(company_id: int,
     if await company_crud.check_user_membership(user_id, company_id):
         logger.warning(f"Requested user \"{request_user}\" is already a member for the requested company \"{request_company}\"")
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("Requested user is already a member of the company"))
+
+    # Validate if company haven't received a request from the requested user yet
+    if await request_crud.check_existing_request(company_id=company_id, sender_id=user_id):
+        logger.warning(f"Permission error: User \"{user_id}\" have already sent a request to the company \"{company_id}\"")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler(f"User {user_id} have already sent a request to the company {company_id}"))
     
     # Send invitation
-    await request_crud.send_company_request(company=request_company, sender_id=current_user_id, receiver_id=user_id)
+    await request_crud.send_company_request(company=request_company, sender_id=None, receiver_id=user_id)
     logger.info(f"Successfully invited user \"{request_user}\" to the company \"{request_company}\"")
     return {"response": "Invitation was successfully sent"}
 
@@ -200,9 +196,9 @@ async def kick_user(company_id: int,
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("You can't kick yourself from the company"))
     
     # Validate if user has permission to kick another user
-    if await company_crud.user_is_admin(current_user_id, request_company.id) and \
-    (await company_crud.user_is_admin(user_id, request_company.id) or \
-    await company_crud.user_is_owner(user_id, request_company.id)):
+    if await company_crud.user_has_role(current_user_id, request_company.id, RoleEnum.Admin) and \
+    (await company_crud.user_has_role(user_id, request_company.id, RoleEnum.Admin) or \
+    await company_crud.user_has_role(user_id, request_company.id, RoleEnum.Owner)):
         logger.warning(f"Permission error: User \"{current_user_id}\" tried to kick admin or owner")
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("You don't have permission to perform this action"))
 
@@ -220,7 +216,6 @@ async def get_received_requests(company_id: int,
 
     # Initialize services
     request_crud = CompanyRequestsRepository(session)
-    user_crud = UserRepository(session)
     company_crud = CompanyRepository(session)
     
     company = await company_crud.get_company_by_id(company_id, auth["email"], admin_only=True)
@@ -228,11 +223,7 @@ async def get_received_requests(company_id: int,
         logger.warning(f"Company \"{company_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested company is not found"))
 
-    # Retrieving current user id
-    current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
-    current_user_id = auth.get("id") if not current_user else current_user.id
-
-    res = await request_crud.get_received_requests(receiver_id=current_user_id, for_company=True)
+    res = await request_crud.get_received_requests(company_id=company.id)
     logger.info(f"Successfully retrieved requests list of the company \"{company}\"")
     return res
 
@@ -245,7 +236,6 @@ async def get_sent_invitations(company_id: int,
     
     # Initialize services
     request_crud = CompanyRequestsRepository(session)
-    user_crud = UserRepository(session)
     company_crud = CompanyRepository(session)
     
     company = await company_crud.get_company_by_id(company_id, auth["email"], admin_only=True)
@@ -253,11 +243,7 @@ async def get_sent_invitations(company_id: int,
         logger.warning(f"Company \"{company_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested company is not found"))
 
-    # Retrieving current user id
-    current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
-    current_user_id = auth.get("id") if not current_user else current_user.id
-
-    res = await request_crud.get_sent_requests(sender_id=current_user_id, for_company=True)
+    res = await request_crud.get_sent_requests(company_id=company.id)
     logger.info(f"Successfully retrieved sent invitations list of the company \"{company}\"")
     return res
 
@@ -317,7 +303,7 @@ async def give_admin_role(company_id: int,
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler(f"User {request_user.email} is not the member of the company {company.title}"))
 
     # Check if user isn't already an admin
-    if await company_crud.user_is_admin(user_id=user_id, company_id=company_id):
+    if await company_crud.user_has_role(user_id=user_id, company_id=company_id, role=RoleEnum.Admin):
         logger.warning(f"User \"{request_user}\" is already an admin in the company \"{company}\"")
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler(f"User {request_user.email} is already an admin in the company {company.title}"))
     
@@ -347,7 +333,6 @@ async def take_admin_role(company_id: int,
     # Retrieving current user id
     current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
     current_user_id = auth.get("id") if not current_user else current_user.id
-    print(current_user_id)
 
     # Check if requested user is not yourself
     if current_user_id == user_id:
@@ -365,9 +350,9 @@ async def take_admin_role(company_id: int,
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler(f"User {request_user.email} is not the member of the company {company.title}"))
 
     # Check if user is an admin
-    if not await company_crud.user_is_admin(user_id=user_id, company_id=company_id):
+    if not await company_crud.user_has_role(user_id=user_id, company_id=company_id, role=RoleEnum.Admin):
         logger.warning(f"User \"{request_user}\" is not an admin in the company \"{company}\"")
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler(f"User {request_user.email} is already an admin in the company {company.title}"))
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler(f"User {request_user.email} is not an admin in the company {company.title}"))
     
     # Set admin
     await company_crud.set_role(user_id=user_id, company_id=company_id, role=RoleEnum.Member)
@@ -403,7 +388,7 @@ async def leave_company(company_id: int,
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler(f"User {current_user_id} is not the member of the company {company_id}"))
     
     # Validate if user isn't the owner of the company
-    if await company_crud.user_is_owner(user_id=current_user_id, company_id=company_id):
+    if await company_crud.user_has_role(user_id=current_user_id, company_id=company_id, role=RoleEnum.Owner):
         logger.warning("Validation error: Owner can't leave its company")
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("Owner can't leave its company"))
      
