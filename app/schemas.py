@@ -58,14 +58,6 @@ class CompanyFullSchema(CompanySchema):
         (check if user is member of the company or not)
         """
 
-        # Check whether we should give access to the user "user_id" or not
-        # if user_id:
-        #     async for session in get_async_session():
-        #         company_crud = CompanyRepository(session)
-        #         if not await company_crud.check_user_membership(user_id, company_model.id):
-        #             raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Company is not found"))
-        #         break
-
         if company_model.is_hidden and public_request and not single_company_request:
             return []
         

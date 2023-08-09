@@ -248,7 +248,7 @@ async def get_sent_invitations(company_id: int,
     return res
 
 
-@company_router.get("/{comapny_id}/admins", response_model=List[UserSchema], response_model_exclude_none=True)
+@company_router.get("/{company_id}/admins", response_model=List[UserSchema], response_model_exclude_none=True)
 async def get_company_admin_list(company_id: int,
                                  session: AsyncSession = Depends(get_async_session),
                                  auth=Depends(auth_handler.auth_wrapper)) -> List[UserSchema]:
@@ -267,11 +267,11 @@ async def get_company_admin_list(company_id: int,
     return admins
 
 
-@company_router.get("/{company_id}/set-admin/{user_id}", response_model=Optional[Dict[str, str]])
+@company_router.post("/{company_id}/set-admin/{user_id}", response_model=Optional[Dict[str, Any]])
 async def give_admin_role(company_id: int, 
                           user_id: int,
                           session: AsyncSession = Depends(get_async_session),
-                          auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:
+                          auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, Any]]:
     logger.info(f"Setting the admin role for the user \"{user_id}\" in the company \"{company_id}\"")
 
     # Initialize services 
@@ -288,9 +288,9 @@ async def give_admin_role(company_id: int,
     current_user_id = auth.get("id") if not current_user else current_user.id
 
     # Check if requested user is not yourself
-    if current_user_id == user_id:
+    if user_id == current_user_id:
         logger.warning(f"Validation error: User \"{current_user_id}\" requested itself")
-        return HTTPException(status.HTTP_400_BAD_REQUEST, detail=("You can't change your own role"))
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("You can't change your own role"))
 
     request_user = await user_crud.get_user_by_id(user_id)
     if not request_user:
@@ -314,7 +314,7 @@ async def give_admin_role(company_id: int,
     return {"response": f"User {request_user.email} was successfuly assigned as admin"}
     
 
-@company_router.get("/{company_id}/unset-admin/{user_id}", response_model=Optional[Dict[str, str]])
+@company_router.post("/{company_id}/unset-admin/{user_id}", response_model=Optional[Dict[str, str]])
 async def take_admin_role(company_id: int, 
                           user_id: int,
                           session: AsyncSession = Depends(get_async_session),
@@ -337,7 +337,7 @@ async def take_admin_role(company_id: int,
     # Check if requested user is not yourself
     if current_user_id == user_id:
         logger.warning(f"Validation error: User \"{current_user_id}\" requested itself")
-        return HTTPException(status.HTTP_400_BAD_REQUEST, detail=("You can't change your own role"))
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("You can't change your own role"))
 
     request_user = await user_crud.get_user_by_id(user_id)
     if not request_user:

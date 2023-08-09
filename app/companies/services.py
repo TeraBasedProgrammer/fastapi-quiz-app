@@ -134,7 +134,7 @@ class CompanyRepository:
         result = await self.db_session.execute(select(CompanyUser).where((CompanyUser.company_id == company_id) & (CompanyUser.user_id == user_id)))
         
         data = result.scalar_one_or_none()
-        if data.role == role:
+        if data and data.role == role:
             logger.debug(f"User {user_id} is the {role} in the company {company_id}")
             return True
         logger.debug(f"User {user_id} is not the {role} in the company {company_id}")      

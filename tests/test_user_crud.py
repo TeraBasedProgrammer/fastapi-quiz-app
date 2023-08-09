@@ -5,7 +5,7 @@ from typing import Any, Callable
 import httpx
 import pytest
 
-from .conftest import DEFAULT_COMPANY_DATA, DEFAULT_USER_DATA
+from .conftest import DEFAULT_USER_DATA
 
 
 # Get all users
@@ -244,7 +244,7 @@ async def test_user_with_company(client: httpx.AsyncClient,
     assert len(companies) == 1
     assert companies[0]["title"] == "MyCompany"
     assert companies[0]["description"] == "Description"
-    assert companies[0].get("is_hidden") == None
+    assert companies[0].get("is_hidden") == False
     assert companies[0]["created_at"].split("T")[0] == str(datetime.utcnow().date())
     
 

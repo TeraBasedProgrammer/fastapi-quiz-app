@@ -198,7 +198,7 @@ async def accept_request(request_id: int,
     # Initialize services 
     request_crud = CompanyRequestsRepository(session)
     user_crud = UserRepository(session)
-    company_crud = CompanyRepository()
+    company_crud = CompanyRepository(session)
 
     # Get request
     request = await request_crud.get_request_by_id(request_id)
@@ -210,7 +210,7 @@ async def accept_request(request_id: int,
     current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
     current_user_id = auth.get("id") if not current_user else current_user.id
 
-    # Check if user has permission to cancel the invitation
+    # Check if user has permission to accept the request
     if await company_crud.user_has_role(current_user_id, request.company_id, RoleEnum.Member): 
         logger.warning(f"Permission error: User \"{current_user_id}\" doesn't have permission to accept request \"{request_id}\"")
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
@@ -233,8 +233,8 @@ async def decline_request(request_id: int,
     company_crud = CompanyRepository(session)
 
     # Get request
-    invitation = await request_crud.get_request_by_id(request_id)
-    if not invitation:
+    request = await request_crud.get_request_by_id(request_id)
+    if not request:
         logger.warning(f"Company request \"{request_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Membership request is not found"))
     
@@ -243,11 +243,11 @@ async def decline_request(request_id: int,
     current_user_id = auth.get("id") if not current_user else current_user.id
 
     # Validate if user is already a member of the requested company
-    if await company_crud.user_has_role(current_user_id, invitation.company_id, RoleEnum.Member):
+    if await company_crud.user_has_role(current_user_id, request.company_id, RoleEnum.Member):
         logger.warning(f"Permission error: User \"{current_user_id}\" doesn't have permission to decline request \"{request_id}\"")
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
 
     # Decline the invitation 
-    await request_crud.delete_company_request(invitation.id)
+    await request_crud.delete_company_request(request.id)
     logger.info(f"Successfully declined membership request \"{request_id}\"")
     return {"response": "Membership request was successfully declined"}

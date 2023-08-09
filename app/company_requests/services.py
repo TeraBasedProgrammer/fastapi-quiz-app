@@ -3,7 +3,6 @@ from typing import Dict, List, Optional
 
 from fastapi import HTTPException
 from sqlalchemy import delete, select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
@@ -91,8 +90,9 @@ class CompanyRequestsRepository:
                                     company_id: Optional[int] = None) -> List[Optional[Dict[int, Company]]] | List[Optional[Dict[int, User]]]:
         logger.debug(f"Received data:\nreceiver_id -> {receiver_id}\ncompany_id -> {company_id}")
 
+        # Subquery to retrieve companies related to the user
         subquery = select(CompanyUser.company_id).where(CompanyUser.user_id == receiver_id)
-        if company_id:
+        if company_id is not None:
             # Requests received by company from user
             query = await self.db_session.execute(select(CompanyRequest.id, User)
                 .join(User, CompanyRequest.sender_id == User.id)
@@ -115,9 +115,11 @@ class CompanyRequestsRepository:
     async def get_sent_requests(self, sender_id: Optional[int] = None, 
                                 company_id: Optional[int] = None)  -> List[Optional[Dict[int, Company]]] | List[Optional[Dict[int, User]]]:
         logger.debug(f"Received data:\nsender_id -> {sender_id}\ncompany_id -> {company_id}")
+        
+        # Subquery to retrieve companies related to the user
         subquery = select(CompanyUser.company_id).where(CompanyUser.user_id == sender_id)
         # Invitations sent by company 
-        if company_id:
+        if company_id is not None:
             query = await self.db_session.execute(select(CompanyRequest.id, User)
                 .join(User, CompanyRequest.receiver_id == User.id)
                 .where((CompanyRequest.company_id == company_id) & (CompanyRequest.sender_id == None)))
