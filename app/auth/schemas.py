@@ -2,9 +2,9 @@ import logging
 import re
 from typing import Optional
 
-from starlette import status
 from fastapi import HTTPException
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, EmailStr, field_validator
+from starlette import status
 
 from app.users.schemas import UserBase
 
@@ -28,6 +28,6 @@ class UserSignUpAuth0(UserSignUp):
 
 
 class UserLogin(BaseModel):
-    email: str
+    email: EmailStr
     password: str
 

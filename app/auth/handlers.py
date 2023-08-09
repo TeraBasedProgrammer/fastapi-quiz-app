@@ -1,15 +1,16 @@
 from datetime import datetime, timedelta
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 import jwt
-from starlette import status
 from fastapi import Depends, HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette import status
 
 from app.config import Settings, settings
 from app.database import get_async_session
+from app.utils import get_global_user_crud
 
 
 class VerifyAuth0Token:
@@ -24,15 +25,15 @@ class VerifyAuth0Token:
         jwks_url = f'https://{self.config.auth0_domain}/.well-known/jwks.json'
         self.jwks_client = jwt.PyJWKClient(jwks_url)
 
-    def verify(self) -> Optional[Dict[str, bool]]:
+    async def verify(self) -> Optional[Dict[str, bool]]:
         # This gets the 'kid' from the passed token
         try:
             self.signing_key = self.jwks_client.get_signing_key_from_jwt(
                 self.token
             ).key
-        except jwt.exceptions.PyJWKClientError as error:
+        except jwt.exceptions.PyJWKClientError:
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail='Invalid token payload')
-        except jwt.exceptions.DecodeError as error:
+        except jwt.exceptions.DecodeError:
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail='Token decode error')
 
         try:
@@ -46,7 +47,8 @@ class VerifyAuth0Token:
         except jwt.InvalidTokenError as e:
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail='Invalid token or its signature has expired')
 
-        return {"email": payload['email'], "auth0": True}
+        # Get user id (or None if user is not registered yet)
+        return {"email": payload['email'], "id": None, "auth0": True}
 
 
 class AuthHandler:
@@ -54,17 +56,22 @@ class AuthHandler:
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     secret: str = settings.jwt_secret
 
-    def get_password_hash(self, password: str) -> str:
+    async def get_password_hash(self, password: str) -> str:
         return self.pwd_context.hash(password)
 
-    def verify_password(self, plain_password: str, hashed_password: str) -> bool:
+    async def verify_password(self, plain_password: str, hashed_password: str) -> bool:
         return self.pwd_context.verify(plain_password, hashed_password, scheme="bcrypt")
 
-    def encode_token(self, user_email: str) -> str:
+    async def encode_token(self, user_email: str, session: AsyncSession) -> str:
+        # Initialize user_crud object to get user id once and put it in jwt payload
+        user_crud = await get_global_user_crud(session=session)
+        user = await user_crud.get_user_by_email(user_email)
+
         payload = {
-            'exp': datetime.utcnow() + timedelta(days=0, minutes=60),
+            'exp': datetime.utcnow() + timedelta(days=0, hours=2),
             'iat': datetime.utcnow(),
-            'sub': user_email
+            'sub': user_email,
+            'id': user.id
         }
         return jwt.encode(
             payload,
@@ -72,30 +79,32 @@ class AuthHandler:
             algorithm='HS256'
         )
 
-    def decode_token(self, token: str) -> Optional[Dict[str, bool]]:
+    async def decode_token(self, token: str, session: AsyncSession) -> Optional[Dict[str, bool]]:
         try:
             payload = jwt.decode(token, self.secret, algorithms=['HS256'])
-            return {"email": payload['sub'], "auth0": False}
+            return {"email": payload["sub"], "id": payload["id"], "auth0": False}
         except jwt.ExpiredSignatureError:
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail='Signature has expired')
         except jwt.InvalidTokenError as e: 
             # If token doesn't have the default structure, funcion delegates token verification to the auth0 jwt validator
             auth0_decoder = VerifyAuth0Token(token)
-            decoded_data = auth0_decoder.verify()
+            decoded_data = await auth0_decoder.verify()
             if decoded_data:
                 return decoded_data
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail='Invalid token')
 
     async def auth_wrapper(self, session: AsyncSession = Depends(get_async_session), 
                            auth: HTTPAuthorizationCredentials = Security(security)) -> Optional[Dict[str, bool]]:
-        # Check if there are no registered users to this email address
-
-        # Local import to avoid circular import error
-        from app.users.services import UserRepository
-        user_data = self.decode_token(auth.credentials)
+        user_data = await self.decode_token(auth.credentials, session)
         
+        # Check if there are no registered users to this email address
         if user_data['auth0']:
-            crud = UserRepository(session)
-            await crud.error_or_create(user_data['email'])
-
+            crud = await get_global_user_crud(session)
+            new_user: Dict[str, Any] | None = await crud.error_or_create(user_data['email'])
+            
+            # Add new user id to the user_data
+            if new_user:
+                user_data["id"] = new_user["id"]
+                return user_data
+        
         return user_data

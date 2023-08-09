@@ -3,9 +3,9 @@ import re
 from datetime import datetime
 from typing import Optional
 
-from starlette import status
 from fastapi import HTTPException
 from pydantic import BaseModel, EmailStr, Field, field_validator
+from starlette import status
 
 from app.companies.models import RoleEnum
 

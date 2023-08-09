@@ -5,7 +5,7 @@ from typing import Any, Callable
 import httpx
 import pytest
 
-from .conftest import DEFAULT_COMPANY_DATA, DEFAULT_USER_DATA
+from .conftest import DEFAULT_USER_DATA
 
 
 # Get all users
@@ -152,15 +152,15 @@ async def test_delete_user(client: httpx.AsyncClient,
     assert response.json() == {"deleted_instance_id": 1}
 
 
-async def test_delete_user_not_found(client: httpx.AsyncClient,
+async def test_delete_user_forbidden(client: httpx.AsyncClient,
                                      create_user_instance: Callable[..., Any],
                                      create_auth_jwt: Callable[..., Any]) -> None:
     user_data = await create_user_instance()
     jwt = await create_auth_jwt(user_data["email"])
     response = await client.delete("/users/200/delete", headers={"Authorization": f"Bearer {jwt}"})
 
-    assert response.status_code == 404
-    assert response.json() == {"detail": {"error": "User is not found"}}
+    assert response.status_code == 403
+    assert response.json() == {"detail": {"error": "Forbidden"}}
 
 
 async def test_delete_user_permission_error(client: httpx.AsyncClient,
@@ -244,7 +244,7 @@ async def test_user_with_company(client: httpx.AsyncClient,
     assert len(companies) == 1
     assert companies[0]["title"] == "MyCompany"
     assert companies[0]["description"] == "Description"
-    assert companies[0].get("is_hidden") == None
+    assert companies[0].get("is_hidden") == False
     assert companies[0]["created_at"].split("T")[0] == str(datetime.utcnow().date())
     
 

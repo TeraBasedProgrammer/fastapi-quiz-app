@@ -1,17 +1,19 @@
 import logging
 from typing import Any, Dict, List, Optional
 
+from fastapi import HTTPException
 from pydantic import EmailStr
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
+from starlette import status
 
 from app.auth.handlers import AuthHandler
 from app.companies.models import Company, CompanyUser, RoleEnum
-from app.users.services import UserRepository
+from app.users.models import User
+from app.users.services import UserRepository, error_handler
 
 from .schemas import CompanyCreate, CompanyUpdate
-from .utils import confirm_company_owner
 
 logger = logging.getLogger("main_logger")
 
@@ -29,31 +31,43 @@ class CompanyRepository:
         return result.unique().scalars().all()
         
     
-    async def get_company_by_id(self, company_id: int, current_user_email: EmailStr, validation_required: bool = False) -> Optional[Company]:
-        logger.debug(f"Received company id: '{company_id}'")
+    async def get_company_by_id(self, company_id: int, current_user_email: EmailStr, owner_only: bool = False, admin_only: bool = False) -> Optional[Company]:
+        logger.debug(f"Received data:\ncompany_id -> \"{company_id}\"")
         data = await self.db_session.execute(select(Company).options(joinedload(Company.users)).where(Company.id == company_id))
-        result = data.unique().scalar_one_or_none()
-        if result:
-            logger.debug(f"Retrieved company by id '{company_id}': {result.title}")
+        company = data.unique().scalar_one_or_none()
+        if company:
+            logger.debug(f"Retrieved company by id \"{company_id}\": \"{company}\"")
 
-            # Check permissions (validate if user is the owner of retrieved company)
-            if result.is_hidden or validation_required:
-                await confirm_company_owner(result, current_user_email)
-
-        return result 
+            # Check permissions
+            if company.is_hidden:
+                member_user = list(filter(lambda x: x.users.email == current_user_email, company.users))
+                if not member_user:
+                    logger.warning(f"Permission error: User \"{current_user_email}\" is not a member of the company")
+                    raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
+            if owner_only:
+                owner_user = list(filter(lambda x: x.users.email == current_user_email and x.role == RoleEnum.Owner, company.users))
+                if not owner_user:
+                    logger.warning(f"Permission error: User \"{current_user_email}\" is not an owner of the company")
+                    raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
+            if admin_only:
+                admin_user = list(filter(lambda x: x.users.email == current_user_email and (x.role == RoleEnum.Owner or x.role == RoleEnum.Admin), company.users))
+                if not admin_user:
+                    logger.warning(f"Permission error: User \"{current_user_email}\" is not an admin of the company")
+                    raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
+        return company 
 
 
     async def get_company_by_title(self, title: str) -> Optional[Company]:
-        logger.debug(f"Received company name: '{title}'")
+        logger.debug(f"Received data:\n company_title -> \"{title}\"")
         data = await self.db_session.execute(select(Company).options(joinedload(Company.users)).where(Company.title == title))
-        result = data.unique().scalar_one_or_none()
-        if result:
-            logger.debug(f"Retrieved company by name '{title}': '{result.id}'")
-        return result
+        company = data.unique().scalar_one_or_none()
+        if company:
+            logger.debug(f"Retrieved company by name \"{title}\": \"{company}\"")
+        return company
 
 
     async def create_company(self, company_data: CompanyCreate, current_user_email: EmailStr) -> Dict[str, Any]:
-        logger.debug(f"Received new company data: {company_data}")
+        logger.debug(f"Received data:\nnew company_data -> {company_data}")
         # Initialize new company object
         new_company = Company(
            **company_data.model_dump() 
@@ -73,11 +87,11 @@ class CompanyRepository:
         self.db_session.add(company_user)
         await self.db_session.commit()
          
-        logger.debug(f"Successfully inserted new company instance with owner '{current_user_email}' into the database")
+        logger.debug(f"Successfully inserted new company instance with owner \"{current_user_email}\" into the database")
         return {"id": new_company.id, "title": new_company.title}
 
     async def update_company(self, company_id: int, company_data: CompanyUpdate) -> Optional[Company]:
-        logger.debug(f"Received company data: {company_data}")
+        logger.debug(f"Received data:\ncompany_data -> {company_data}")
         query = (
             update(Company)
             .where(Company.id == company_id)
@@ -86,12 +100,12 @@ class CompanyRepository:
         )
         res = await self.db_session.execute(query)
         await self.db_session.commit()
-        logger.debug(f"Successfully updatetd company instance {company_id}")
+        logger.debug(f"Successfully updated company instance \"{company_id}\"")
         return res.scalar_one()
 
 
     async def delete_company(self, company_id: int) -> Optional[int]:
-        logger.debug(f"Received company id: '{company_id}'")
+        logger.debug(f"Received data:\ncompany_id -> \"{company_id}\"")
         query = (
             delete(Company)
             .where(Company.id == company_id)
@@ -100,7 +114,7 @@ class CompanyRepository:
 
         result = (await self.db_session.execute(query)).scalar_one()
         await self.db_session.commit()
-        logger.debug(f"Successfully deleted company '{result}' from the database")
+        logger.debug(f"Successfully deleted company \"{result}\" from the database")
         return result
 
 
@@ -114,13 +128,36 @@ class CompanyRepository:
             return True
         logger.debug(f"User {user_id} is not a member of the company {company_id}")
         
-
-    async def user_is_owner(self, user_id: int, company_id: int) -> Optional[bool]:
-        logger.debug(f"Received data:\ncompany_id -> {company_id}\nuser_id -> {user_id}")
+ 
+    async def user_has_role(self, user_id: int, company_id: int, role: RoleEnum) -> Optional[bool]:
+        logger.debug(f"Received data:\ncompany_id -> {company_id}\nuser_id -> {user_id}\nrole -> {role}")
         result = await self.db_session.execute(select(CompanyUser).where((CompanyUser.company_id == company_id) & (CompanyUser.user_id == user_id)))
         
         data = result.scalar_one_or_none()
-        if data.role == RoleEnum.Owner:
-            logger.debug(f"User {user_id} is the owner of the company {company_id}")
+        if data and data.role == role:
+            logger.debug(f"User {user_id} is the {role} in the company {company_id}")
             return True
-        logger.debug(f"User {user_id} is not the owner of the company {company_id}")
+        logger.debug(f"User {user_id} is not the {role} in the company {company_id}")      
+
+    async def get_admins(self, company_id: int) -> List[User]:
+        logger.debug(f"Received data:\ncompany_id -> {company_id}")
+        result = await self.db_session.execute(select(CompanyUser, User)
+                                               .join(User, CompanyUser.user_id == User.id)
+                                               .where((CompanyUser.role == RoleEnum.Admin) & (CompanyUser.company_id == company_id))
+                                               .reduce_columns(CompanyUser))
+        response = result.all()
+        logger.debug(f"Successfully retrieved company admins list: {response}")
+        return response
+
+
+    async def set_role(self, company_id: int, user_id: int, role: RoleEnum) -> None:
+        logger.debug(f"Received data:\ncompany_id -> {company_id}\nuser_id -> {user_id}")
+        query = (
+            update(CompanyUser)
+            .where((CompanyUser.user_id == user_id) & (CompanyUser.company_id == company_id))
+            .values({"role": role})
+        )
+        res = await self.db_session.execute(query)
+        await self.db_session.commit()
+        logger.debug(f"Successfully set admin role for user {user_id} in company {company_id}")
+         

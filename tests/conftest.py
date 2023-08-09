@@ -19,6 +19,7 @@ from app.database import Base, get_async_session
 from app.main import app
 from app.users.models import User
 from app.companies.models import Company, CompanyUser, RoleEnum
+from app.company_requests.models import CompanyRequest
 
 # Activate venv
 read_dotenv(os.path.join(Path(__file__).resolve().parent.parent, '.env'))
@@ -26,10 +27,12 @@ read_dotenv(os.path.join(Path(__file__).resolve().parent.parent, '.env'))
 Jwt: TypeAlias = str
 
 DATABASE_URL: str = settings.test_database_url
+
 DB_TABLES: Dict[str, Optional[str]] = {
     "users": "users_id_seq",
     "companies": "companies_id_seq",
     "company_user": None,
+    "company_request": "company_request_id_seq",
 }
 
 DEFAULT_USER_DATA = {
@@ -120,7 +123,7 @@ async def get_user_by_id(async_session_test) -> Callable[[str], Awaitable[list]]
 async def create_raw_user(async_session_test) -> Callable[[str, str, str], Awaitable[None]]:
     async def create_raw_user(email: str, name: str, password: str) -> None:
         auth = AuthHandler()
-        hashed_password = auth.get_password_hash(password)
+        hashed_password = await auth.get_password_hash(password)
 
         async with async_session_test() as session:
             user = User(
@@ -183,8 +186,8 @@ async def create_user_company_instance(async_session_test) -> Callable[[str, str
     async def create_user_company_instance(user_id: int = 1, company_id: int = 1, role = RoleEnum.Owner) -> None:
         async with async_session_test() as session:
             company_user = CompanyUser(
-                company_id=user_id,
-                user_id=company_id,
+                company_id=company_id,
+                user_id=user_id,
                 role=role
             )
             session.add(company_user)
@@ -204,10 +207,33 @@ async def create_default_company_object(create_company_instance,
 
 
 @pytest.fixture(scope="function")
-async def create_auth_jwt() -> Callable[[str], Awaitable[Jwt]]:
+async def create_company_request_instance(async_session_test) -> Callable[[int, Optional[int], Optional[int]], Awaitable[CompanyRequest]]:
+    async def create_company_request_instance(company_id: int, 
+                                            sender_id: Optional[int] = None, 
+                                            receiver_id: Optional[int] = None) -> CompanyRequest:
+        async with async_session_test() as session:
+            new_company_request = CompanyRequest(company_id=company_id, sender_id=sender_id, receiver_id=receiver_id)
+            session.add(new_company_request)
+            await session.commit()
+            return new_company_request
+    return create_company_request_instance
+
+
+@pytest.fixture(scope="function")
+async def get_request_by_id(async_session_test) -> Callable[[int], Awaitable[CompanyRequest]]:
+    async def get_request_by_id(request_id: int) -> CompanyRequest:
+        async with async_session_test() as session:
+            request = await session.execute(select(CompanyRequest).where(CompanyRequest.id == request_id))
+            return request.scalar_one_or_none()
+    return get_request_by_id
+
+
+@pytest.fixture(scope="function")
+async def create_auth_jwt(async_session_test) -> Callable[[str], Awaitable[Jwt]]:
     async def create_auth_jwt(user_email: str) -> Jwt:
-        auth = AuthHandler()
-        token = auth.encode_token(user_email)
-        return token
+        async with async_session_test() as session:
+            auth = AuthHandler()
+            token = await auth.encode_token(user_email, session)
+            return token
 
     return create_auth_jwt

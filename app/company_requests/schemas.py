@@ -11,7 +11,6 @@ logger = logging.getLogger("main_logger")
 class UserInvitationSchema(BaseModel):
     """Pydantic schema for serializing request (invitation) object, received by user"""
     invitation_id: int
-    sender_id: int
     company: CompanySchema
 
     class Config:

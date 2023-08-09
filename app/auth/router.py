@@ -1,9 +1,9 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-from starlette import status
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette import status
 
 from app.company_requests.schemas import (UserInvitationSchema,
                                           UserRequestSchema)
@@ -26,11 +26,11 @@ auth_router = APIRouter(
 
 @auth_router.post("/signup", response_model=Optional[Dict[str, Any]], status_code=201)
 async def signup(user: UserSignUp, session: AsyncSession = Depends(get_async_session)) -> Optional[Dict[str, str]]:
-    logger.info(f"Trying to create new User instance")
+    logger.info(f"Creating new User instance")
     crud = UserRepository(session)
     user_existing_object = await crud.get_user_by_email(user.email)
     if user_existing_object: 
-        logger.warning(f"Validation error: User with email '{user.email}' already exists")
+        logger.warning(f"Validation error: User with email \"{user.email}\" already exists")
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("User with this email already exists"))
     result = await crud.create_user(user)
     logger.info(f"New user instance has been successfully created")
@@ -39,21 +39,21 @@ async def signup(user: UserSignUp, session: AsyncSession = Depends(get_async_ses
 
 @auth_router.post("/login")
 async def login(user: UserLogin, session: AsyncSession = Depends(get_async_session)) -> Optional[Dict[str, str]]:
-    logger.info(f"Login attemp with email {user.email}")
+    logger.info(f"Login attemp with email \"{user.email}\"")
 
     crud = UserRepository(session)
     user_existing_object = await crud.get_user_by_email(user.email)
     if not user_existing_object:
-        logger.warning(f"User with email {user.email} is not registered in the system")
+        logger.warning(f"User with email \"{user.email}\" is not registered in the system")
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("User with this email is not registered in the system"))
 
-    verify_password = auth_handler.verify_password(user.password, user_existing_object.password)
+    verify_password = await auth_handler.verify_password(user.password, user_existing_object.password)
     if not verify_password:
-        logger.warning(f"Invalid password provided")
+        logger.warning(f"Invalid password was provided")
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("Invalid password"))
 
-    logger.info(f"User {user.email} successfully logged in the system")
-    auth_token = auth_handler.encode_token(user.email)
+    logger.info(f"User \"{user.email}\" successfully logged in the system")
+    auth_token = await auth_handler.encode_token(user.email, session)
     return {"token": auth_token}
 
 
@@ -64,20 +64,25 @@ async def get_current_user(session: AsyncSession = Depends(get_async_session),
     crud = UserRepository(session)
 
     current_user = await crud.get_user_by_email(auth['email'])
-    logger.info(f"Successfully returned current user ({auth['email']}) info")
-    return UserFullSchema.from_model(current_user, public_request=False)
+
+    logger.info(f"Successfully returned current user info")
+    return await UserFullSchema.from_model(current_user, public_request=False)
 
 
 @auth_router.get("/me/invitations", response_model=Optional[List[UserInvitationSchema]], response_model_exclude_none=True)
 async def get_received_invitations(session: AsyncSession = Depends(get_async_session),
                            auth=Depends(auth_handler.auth_wrapper)) -> Optional[List[UserInvitationSchema]]:
     logger.info(f"Retrieving current user invitations list")
+
     # Initialize services
     request_crud = CompanyRequestsRepository(session)
     user_crud = UserRepository(session)
     
-    current_user = await user_crud.get_user_by_email(auth["email"])
-    res = await request_crud.get_received_requests(receiver_id=current_user.id, for_company=False)
+    # Retrieving current user id
+    current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
+    user_id = auth.get("id") if not current_user else current_user.id
+
+    res = await request_crud.get_received_requests(receiver_id=user_id)
     logger.info(f"Successfully retrieved current user invitations list")
     return res
 
@@ -86,13 +91,15 @@ async def get_received_invitations(session: AsyncSession = Depends(get_async_ses
 async def get_sent_requests(session: AsyncSession = Depends(get_async_session),
                            auth=Depends(auth_handler.auth_wrapper)) -> Optional[List[UserRequestSchema]]:
     logger.info(f"Retrieving current user sent requests list")
+    
     # Initialize services
     request_crud = CompanyRequestsRepository(session)
     user_crud = UserRepository(session)
     
-    current_user = await user_crud.get_user_by_email(auth["email"])
-    res = await request_crud.get_sent_requests(sender_id=current_user.id, for_company=False)
+    # Retrieving current user id
+    current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
+    user_id = auth.get("id") if not current_user else current_user.id
+
+    res = await request_crud.get_sent_requests(sender_id=user_id)
     logger.info(f"Successfully retrieved current user sent requests list")
     return res
-
-
