@@ -2,24 +2,24 @@ import asyncio
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import (Any, AsyncGenerator, Awaitable, Callable,
-                    Generator, TypeAlias, Dict, Optional)
+from typing import (Any, AsyncGenerator, Awaitable, Callable, Dict, Generator,
+                    Optional, TypeAlias)
 
 import httpx
 import pytest
 from auth.handlers import AuthHandler
 from py_dotenv import read_dotenv
 from sqlalchemy import select, text
-from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import (AsyncSession, async_sessionmaker,
                                     create_async_engine)
+from sqlalchemy.orm import joinedload
 
+from app.companies.models import Company, CompanyUser, RoleEnum
+from app.company_requests.models import CompanyRequest
 from app.config import settings
 from app.database import Base, get_async_session
 from app.main import app
 from app.users.models import User
-from app.companies.models import Company, CompanyUser, RoleEnum
-from app.company_requests.models import CompanyRequest
 
 # Activate venv
 read_dotenv(os.path.join(Path(__file__).resolve().parent.parent, '.env'))

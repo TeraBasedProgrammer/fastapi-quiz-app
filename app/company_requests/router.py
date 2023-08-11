@@ -6,10 +6,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
 from app.auth.handlers import AuthHandler
+from app.companies.models import RoleEnum
 from app.companies.services import CompanyRepository
 from app.database import get_async_session
 from app.users.services import UserRepository, error_handler
-from app.companies.models import RoleEnum
 
 from .services import CompanyRequestsRepository
 
@@ -52,7 +52,8 @@ async def cancel_invitation(invitation_id: int,
     current_user_id = auth.get("id") if not current_user else current_user.id
 
     # Check if user has permission to cancel the invitation
-    if await company_crud.user_has_role(current_user_id, invitation.company_id, RoleEnum.Member): 
+    if not (await company_crud.user_has_role(current_user_id, invitation.company_id, RoleEnum.Admin) or
+            await company_crud.user_has_role(current_user_id, invitation.company_id, RoleEnum.Owner)): 
         logger.warning(f"Permission error: User \"{current_user_id}\" doesn't have permission to cancel invitation \"{invitation_id}\"")
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
 
@@ -206,12 +207,21 @@ async def accept_request(request_id: int,
         logger.warning(f"Company request \"{request_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Membership request is not found"))
     
+    # Check if current CompanyRequest instance is request
+    if not request.sender_id:
+        logger.warning(f"Company request \"{request_id}\" is not user request")
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
+    
     # Retrieving current user id
     current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
     current_user_id = auth.get("id") if not current_user else current_user.id
 
+    logger.critical(await company_crud.user_has_role(current_user_id, request.company_id, RoleEnum.Admin))
+    logger.critical(await company_crud.user_has_role(current_user_id, request.company_id, RoleEnum.Owner))
+
     # Check if user has permission to accept the request
-    if await company_crud.user_has_role(current_user_id, request.company_id, RoleEnum.Member): 
+    if not (await company_crud.user_has_role(current_user_id, request.company_id, RoleEnum.Admin) or
+            await company_crud.user_has_role(current_user_id, request.company_id, RoleEnum.Owner)): 
         logger.warning(f"Permission error: User \"{current_user_id}\" doesn't have permission to accept request \"{request_id}\"")
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
 
@@ -231,6 +241,7 @@ async def decline_request(request_id: int,
     request_crud = CompanyRequestsRepository(session)
     user_crud = UserRepository(session)
     company_crud = CompanyRepository(session)
+    
 
     # Get request
     request = await request_crud.get_request_by_id(request_id)
@@ -238,12 +249,18 @@ async def decline_request(request_id: int,
         logger.warning(f"Company request \"{request_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Membership request is not found"))
     
+    # Check if current CompanyRequest instance is request
+    if not request.sender_id:
+        logger.warning(f"Company request \"{request_id}\" is not user request")
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
+    
     # Retrieving current user id
     current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
     current_user_id = auth.get("id") if not current_user else current_user.id
 
-    # Validate if user is already a member of the requested company
-    if await company_crud.user_has_role(current_user_id, request.company_id, RoleEnum.Member):
+    # Validate if user has permission to decline the request
+    if not (await company_crud.user_has_role(current_user_id, request.company_id, RoleEnum.Admin) or
+            await company_crud.user_has_role(current_user_id, request.company_id, RoleEnum.Owner)): 
         logger.warning(f"Permission error: User \"{current_user_id}\" doesn't have permission to decline request \"{request_id}\"")
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
 

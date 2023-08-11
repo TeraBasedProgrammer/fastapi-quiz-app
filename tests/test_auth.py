@@ -17,9 +17,10 @@ from app.auth.handlers import AuthHandler
         {"email": "test@email.com", "password": "password123"}
     )
 )
-async def test_signup(client: httpx.AsyncClient,
-                      user_data: dict[str, Any],
-                      get_user_by_id: Callable[..., Any]) -> None:
+async def test_signup(
+          client: httpx.AsyncClient,
+          user_data: dict[str, Any],
+          get_user_by_id: Callable[..., Any]) -> None:
     auth = AuthHandler()
     response = await client.post("/signup", data=json.dumps(user_data))
     assert response.status_code == 201
@@ -88,11 +89,10 @@ async def test_signup(client: httpx.AsyncClient,
     )
 )
 async def test_signup_validation_error(
-        client: httpx.AsyncClient,
-        user_data: dict[str, Any],
-        error_message: dict[str | Any],
-        status_code: int
-) -> None:
+          status_code: int,
+          client: httpx.AsyncClient,
+          user_data: dict[str, Any],
+          error_message: dict[str | Any]) -> None:
     response = await client.post("/signup", data=json.dumps(user_data))
     assert response.status_code == status_code
 
@@ -100,7 +100,9 @@ async def test_signup_validation_error(
     assert data == error_message
 
 
-async def test_signup_duplicate(client: httpx.AsyncClient, create_raw_user: Callable[..., Any]) -> None:
+async def test_signup_duplicate(
+          client: httpx.AsyncClient, 
+          create_raw_user: Callable[..., Any]) -> None:
     user_data = {
         "email": "test@email.com",
         "name": "ilya",
@@ -115,7 +117,9 @@ async def test_signup_duplicate(client: httpx.AsyncClient, create_raw_user: Call
 
 
 # Login
-async def test_login(client: httpx.AsyncClient, create_user_instance: Callable[..., Any]):
+async def test_login(
+          client: httpx.AsyncClient, 
+          create_user_instance: Callable[..., Any]) -> None:
     await create_user_instance()
     creds = {
         "email": "test@email.com",
@@ -140,10 +144,11 @@ async def test_login(client: httpx.AsyncClient, create_user_instance: Callable[.
         )
     )
 )
-async def test_login_validation_error(client: httpx.AsyncClient,
-                                      create_user_instance: Callable[..., Any],
-                                      user_data: dict[str, Any],
-                                      error_response: dict[str, Any]):
+async def test_login_validation_error(
+          client: httpx.AsyncClient,
+          user_data: dict[str, Any],
+          error_response: dict[str, Any],
+          create_user_instance: Callable[..., Any]) -> None:
     await create_user_instance()
     response = await client.post("/login", data=json.dumps(user_data))
     assert response.status_code == 400
@@ -151,9 +156,10 @@ async def test_login_validation_error(client: httpx.AsyncClient,
 
 
 # Get current user
-async def test_me(client: httpx.AsyncClient,
-                  create_user_instance: Callable[..., Any],
-                  create_auth_jwt: Callable[..., Any]) -> None:
+async def test_me(
+          client: httpx.AsyncClient,
+          create_auth_jwt: Callable[..., Any],
+          create_user_instance: Callable[..., Any]) -> None:
     user_data = await create_user_instance()
     jwt = await create_auth_jwt(user_data["email"])
     response = await client.get("/me", headers={"Authorization": f"Bearer {jwt}"})

@@ -1,10 +1,11 @@
-from typing import Callable, Any, Dict
+from typing import Any, Callable, Dict
 
-import pytest
 import httpx
+import pytest
 from pydantic import EmailStr
 
 from app.companies.models import RoleEnum
+
 from .conftest import DEFAULT_USER_DATA
 
 
@@ -42,8 +43,8 @@ async def test_get_user_invitations(
     
 async def test_get_user_requests(
           client: httpx.AsyncClient,
-          create_user_instance: Callable[..., Any],
           create_auth_jwt: Callable[..., Any],
+          create_user_instance: Callable[..., Any],
           create_company_instance: Callable[..., Any], 
           create_user_company_instance: Callable[..., Any], 
           create_company_request_instance: Callable[..., Any],
@@ -333,7 +334,7 @@ async def test_decline_invitation_error(
           create_company_instance: Callable[..., Any],
           create_user_company_instance: Callable[..., Any],
           create_company_request_instance: Callable[..., Any]) -> None:
-   # Instanciate test objects
+    # Instanciate test objects
     # Sender objects
     await create_user_instance("owner@example.com")
     await create_company_instance()
@@ -353,4 +354,4 @@ async def test_decline_invitation_error(
 
     assert server_response.status_code == status_code
     assert server_response.json() == response
-
+    

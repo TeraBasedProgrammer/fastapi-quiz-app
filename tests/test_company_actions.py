@@ -1,10 +1,11 @@
-from typing import Callable, Any, Dict
+from typing import Any, Callable, Dict
 
-import pytest
 import httpx
+import pytest
 from pydantic import EmailStr
 
 from app.companies.models import RoleEnum
+
 from .conftest import DEFAULT_USER_DATA
 
 
@@ -197,14 +198,11 @@ async def test_get_company_requests(
           client: httpx.AsyncClient,
           create_auth_jwt: Callable[..., Any],
           create_user_instance: Callable[..., Any],
-          create_company_instance: Callable[..., Any],
-          create_user_company_instance: Callable[..., Any],
+          create_default_company_object: Callable[..., Any],
           create_company_request_instance: Callable[..., Any]) -> None:
     # Instanciate test objects
     # Receiver objects
-    await create_user_instance(DEFAULT_USER_DATA["email"])
-    await create_company_instance()
-    await create_user_company_instance()
+    await create_default_company_object()
 
     # Sender object
     sender_user = await create_user_instance(email="user1@example.com", password="password123")
@@ -261,14 +259,11 @@ async def test_get_company_invitations(
           client: httpx.AsyncClient,
           create_auth_jwt: Callable[..., Any],
           create_user_instance: Callable[..., Any],
-          create_company_instance: Callable[..., Any],
-          create_user_company_instance: Callable[..., Any],
+          create_default_company_object: Callable[..., Any],
           create_company_request_instance: Callable[..., Any]) -> None:
     # Instanciate test objects
     # Receiver object
-    await create_user_instance(DEFAULT_USER_DATA["email"])
-    await create_company_instance()
-    await create_user_company_instance()
+    await create_default_company_object()
 
     # Invited object
     invited_user = await create_user_instance(email="user1@example.com", password="password123")
@@ -381,13 +376,11 @@ async def test_give_admin_role(
           client: httpx.AsyncClient,
           create_auth_jwt: Callable[..., Any],
           create_user_instance: Callable[..., Any],
-          create_company_instance: Callable[..., Any],
-          create_user_company_instance: Callable[..., Any]) -> None:
+          create_user_company_instance: Callable[..., Any],
+          create_default_company_object: Callable[..., Any]) -> None:
     # Instanciate test objects
     # Executor objects
-    await create_user_instance(DEFAULT_USER_DATA["email"])
-    await create_company_instance()
-    await create_user_company_instance()
+    await create_default_company_object()
 
     # Member objects
     await create_user_instance(email="user1@example.com", password="password123")
@@ -451,13 +444,11 @@ async def test_take_admin_role(
           client: httpx.AsyncClient,
           create_auth_jwt: Callable[..., Any],
           create_user_instance: Callable[..., Any],
-          create_company_instance: Callable[..., Any],
-          create_user_company_instance: Callable[..., Any]) -> None:
+          create_user_company_instance: Callable[..., Any],
+          create_default_company_object: Callable[..., Any]) -> None:
     # Instanciate test objects
     # Executor objects
-    await create_user_instance(DEFAULT_USER_DATA["email"])
-    await create_company_instance()
-    await create_user_company_instance()
+    await create_default_company_object()
 
     # Admin objects
     await create_user_instance(email="user1@example.com", password="password123")
@@ -572,14 +563,11 @@ async def test_accept_user_request(
           client: httpx.AsyncClient,
           create_auth_jwt: Callable[..., Any],
           create_user_instance: Callable[..., Any],
-          create_company_instance: Callable[..., Any],
-          create_user_company_instance: Callable[..., Any],
+          create_default_company_object: Callable[..., Any],
           create_company_request_instance: Callable[..., Any]) -> None:
     # Instanciate test objects
     # Receiver objects
-    await create_user_instance(DEFAULT_USER_DATA["email"])
-    await create_company_instance()
-    await create_user_company_instance()
+    await create_default_company_object()
 
     # Sender objects
     await create_user_instance("sender@example.com")
@@ -635,14 +623,11 @@ async def test_decline_request(
           client: httpx.AsyncClient,
           create_auth_jwt: Callable[..., Any],
           create_user_instance: Callable[..., Any],
-          create_company_instance: Callable[..., Any],
-          create_user_company_instance: Callable[..., Any],
+          create_default_company_object: Callable[..., Any],
           create_company_request_instance: Callable[..., Any]) -> None:
     # Instanciate test objects
     # Receiver objects
-    await create_user_instance(DEFAULT_USER_DATA["email"])
-    await create_company_instance()
-    await create_user_company_instance()
+    await create_default_company_object()
 
     # Sender objects
     await create_user_instance("sender@example.com")
@@ -698,14 +683,11 @@ async def test_cancel_sent_invitation(
           client: httpx.AsyncClient,
           create_auth_jwt: Callable[..., Any],
           create_user_instance: Callable[..., Any],
-          create_company_instance: Callable[..., Any],
-          create_user_company_instance: Callable[..., Any],
+          create_default_company_object: Callable[..., Any],
           create_company_request_instance: Callable[..., Any]) -> None:
     # Instanciate test objects
     # Sender objects
-    await create_user_instance(DEFAULT_USER_DATA["email"])
-    await create_company_instance()
-    await create_user_company_instance()
+    await create_default_company_object()
 
     # Receiver objects
     await create_user_instance("receiver@example.com")

@@ -8,15 +8,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
 from app.auth.handlers import AuthHandler
-from app.companies.models import RoleEnum
 from app.company_requests.schemas import (CompanyInvitationSchema,
                                           CompanyRequestSchema)
 from app.company_requests.services import CompanyRequestsRepository
 from app.database import get_async_session
+from app.quizzes.schemas import QuizzSchema
+from app.quizzes.services import QuizzRepository
 from app.schemas import CompanyFullSchema
 from app.users.schemas import DeletedInstanceResponse, UserSchema
 from app.users.services import UserRepository, error_handler
 
+from .models import RoleEnum
 from .schemas import CompanyCreate, CompanyUpdate
 from .services import CompanyRepository
 from .utils import filter_companies_response
@@ -197,8 +199,7 @@ async def kick_user(company_id: int,
     
     # Validate if user has permission to kick another user
     if await company_crud.user_has_role(current_user_id, request_company.id, RoleEnum.Admin) and \
-    (await company_crud.user_has_role(user_id, request_company.id, RoleEnum.Admin) or \
-    await company_crud.user_has_role(user_id, request_company.id, RoleEnum.Owner)):
+    (not await company_crud.user_has_role(user_id, company_id, RoleEnum.Member)):
         logger.warning(f"Permission error: User \"{current_user_id}\" tried to kick admin or owner")
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("You don't have permission to perform this action"))
 
@@ -396,3 +397,20 @@ async def leave_company(company_id: int,
     await request_crud.remove_user_from_company(company_id=company_id, user_id=current_user_id)
     logger.info(f"Successfully left company \"{company_id}\"")
     return {"response": f"You have successfully left company {company_id}"}
+
+
+@company_router.get("/{company_id}/quizzes", response_model=Page[List[QuizzSchema]])
+async def get_quizzes(company_id: int,
+                      session: AsyncSession = Depends(get_async_session),
+                      auth=Depends(auth_handler.auth_wrapper)) -> Page[List[QuizzSchema]]:
+    # Initialize services
+    quizz_crud = QuizzRepository(session)
+    company_crud = CompanyRepository(session)
+
+    # Validate if requested instances exist
+    request_company = await company_crud.get_company_by_id(company_id, auth["email"], admin_only=True)
+    if not request_company:
+        logger.warning(f"Company \"{company_id}\" is not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested company is not found"))
+
+    return await quizz_crud.get_company_quizzes(company_id=company_id)
