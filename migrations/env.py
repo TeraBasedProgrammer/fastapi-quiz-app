@@ -12,6 +12,7 @@ from app.config import settings
 from app.users.models import User
 from app.companies.models import Company, CompanyUser
 from app.company_requests.models import CompanyRequest
+from app.quizzes.models import Question, Quizz, Answear
 from dotenv import load_dotenv
 
 

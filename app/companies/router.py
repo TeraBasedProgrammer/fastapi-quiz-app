@@ -17,6 +17,7 @@ from app.quizzes.services import QuizzRepository
 from app.schemas import CompanyFullSchema
 from app.users.schemas import DeletedInstanceResponse, UserSchema
 from app.users.services import UserRepository, error_handler
+from app.utils import get_current_user_id
 
 from .models import RoleEnum
 from .schemas import CompanyCreate, CompanyUpdate
@@ -190,8 +191,7 @@ async def kick_user(company_id: int,
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler(f"User {request_user.email} is not the member of the company {request_company.title}"))
     
     # Retrieving current user id
-    current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
-    current_user_id = auth.get("id") if not current_user else current_user.id
+    current_user_id = await get_current_user_id(session, auth)
 
     if user_id == current_user_id:
         logger.warning(f"Validation error: User \"{current_user_id}\" tried to kick itself from the company")
@@ -285,8 +285,7 @@ async def give_admin_role(company_id: int,
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested company is not found"))
     
     # Retrieving current user id
-    current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
-    current_user_id = auth.get("id") if not current_user else current_user.id
+    current_user_id = await get_current_user_id(session, auth)
 
     # Check if requested user is not yourself
     if user_id == current_user_id:
@@ -332,8 +331,7 @@ async def take_admin_role(company_id: int,
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested company is not found"))
     
     # Retrieving current user id
-    current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
-    current_user_id = auth.get("id") if not current_user else current_user.id
+    current_user_id = await get_current_user_id(session, auth)
 
     # Check if requested user is not yourself
     if current_user_id == user_id:
@@ -380,8 +378,7 @@ async def leave_company(company_id: int,
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested company is not found"))
 
     # Retrieving current user id
-    current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
-    current_user_id = auth.get("id") if not current_user else current_user.id
+    current_user_id = await get_current_user_id(session, auth)
 
     # Validate if user is member of the company
     if not await company_crud.check_user_membership(user_id=current_user_id, company_id=company_id):
@@ -399,10 +396,10 @@ async def leave_company(company_id: int,
     return {"response": f"You have successfully left company {company_id}"}
 
 
-@company_router.get("/{company_id}/quizzes", response_model=Page[List[QuizzSchema]])
+@company_router.get("/{company_id}/quizzes", response_model=Page[QuizzSchema])
 async def get_quizzes(company_id: int,
                       session: AsyncSession = Depends(get_async_session),
-                      auth=Depends(auth_handler.auth_wrapper)) -> Page[List[QuizzSchema]]:
+                      auth=Depends(auth_handler.auth_wrapper)) -> Page[QuizzSchema]:
     # Initialize services
     quizz_crud = QuizzRepository(session)
     company_crud = CompanyRepository(session)
@@ -413,4 +410,4 @@ async def get_quizzes(company_id: int,
         logger.warning(f"Company \"{company_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested company is not found"))
 
-    return await quizz_crud.get_company_quizzes(company_id=company_id)
+    return paginate(await quizz_crud.get_company_quizzes(company_id=company_id))

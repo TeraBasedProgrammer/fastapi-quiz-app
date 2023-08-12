@@ -1,14 +1,7 @@
 from typing import List, Optional
 
-from fastapi import HTTPException, Depends
-from starlette import status
-
-
 from app.companies.schemas import CompanySchema
 from app.users.schemas import UserSchema
-from app.companies.services import CompanyRepository
-from app.database import get_async_session
-from app.users.services import error_handler
 
 
 class UserFullSchema(UserSchema):

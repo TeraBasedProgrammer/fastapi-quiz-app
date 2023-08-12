@@ -136,5 +136,4 @@ class CompanyRequestsRepository:
             response_data = [{'request_id': item[0], 'company': item[1]} for item in query.all()]
             logger.debug(f"Successfully retrieved user requests: {response_data}")
             return response_data
-
-
+        

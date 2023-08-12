@@ -10,6 +10,7 @@ from starlette import status
 from app.auth.handlers import AuthHandler
 from app.database import get_async_session
 from app.schemas import UserFullSchema
+from app.utils import get_current_user_id
 
 from .schemas import DeletedInstanceResponse, UserSchema, UserUpdateRequest
 from .services import UserRepository, error_handler
@@ -65,8 +66,7 @@ async def update_user(user_id: int, body: UserUpdateRequest,
     
     try:
         # Retrieving current user id
-        current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
-        current_user_id = auth.get("id") if not current_user else current_user.id
+        current_user_id = await get_current_user_id(session, auth)
 
         # Validate if requested user is current user
         if user_id != current_user_id:

@@ -141,9 +141,9 @@ class CompanyRepository:
             return False 
 
         if data.role == role:
-            logger.debug(f"User {user_id} is the {role} in the company {company_id}")
+            logger.debug(f"User {user_id} is the {role.value} in the company {company_id}")
             return True
-        logger.debug(f"User {user_id} is not the {role} in the company {company_id}")      
+        logger.debug(f"User {user_id} is not the {role.value} in the company {company_id}")      
         return False
 
     async def get_admins(self, company_id: int) -> List[User]:

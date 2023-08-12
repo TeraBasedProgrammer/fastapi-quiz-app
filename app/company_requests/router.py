@@ -10,6 +10,7 @@ from app.companies.models import RoleEnum
 from app.companies.services import CompanyRepository
 from app.database import get_async_session
 from app.users.services import UserRepository, error_handler
+from app.utils import get_current_user_id
 
 from .services import CompanyRequestsRepository
 
@@ -38,7 +39,6 @@ async def cancel_invitation(invitation_id: int,
 
     # Initialize services repositories
     request_crud = CompanyRequestsRepository(session)
-    user_crud = UserRepository(session)
     company_crud = CompanyRepository(session)
 
     # Get invitation
@@ -48,8 +48,7 @@ async def cancel_invitation(invitation_id: int,
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Invitation is not found"))
     
     # Retrieving current user id
-    current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
-    current_user_id = auth.get("id") if not current_user else current_user.id
+    current_user_id = await get_current_user_id(session, auth)
 
     # Check if user has permission to cancel the invitation
     if not (await company_crud.user_has_role(current_user_id, invitation.company_id, RoleEnum.Admin) or
@@ -71,7 +70,6 @@ async def accept_invitation(invitation_id: int,
 
     # Initialize services
     request_crud = CompanyRequestsRepository(session)
-    user_crud = UserRepository(session)
 
     # Get invitation
     invitation = await request_crud.get_request_by_id(invitation_id)
@@ -80,8 +78,7 @@ async def accept_invitation(invitation_id: int,
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Invitation is not found"))
     
     # Retrieving current user id
-    current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
-    current_user_id = auth.get("id") if not current_user else current_user.id
+    current_user_id = await get_current_user_id(session, auth)
 
     if current_user_id != invitation.receiver_id:
         logger.warning(f"Permission error: User \"{current_user_id}\" is not the receiver of the invitation \"{invitation_id}\"")
@@ -101,7 +98,6 @@ async def decline_invitation(invitation_id: int,
 
     # Initialize services 
     request_crud = CompanyRequestsRepository(session)
-    user_crud = UserRepository(session)
 
     # Get invitation
     invitation = await request_crud.get_request_by_id(invitation_id)
@@ -110,8 +106,7 @@ async def decline_invitation(invitation_id: int,
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Invitation is not found"))
     
     # Retrieving current user id
-    current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
-    current_user_id = auth.get("id") if not current_user else current_user.id
+    current_user_id = await get_current_user_id(session, auth)
 
     if current_user_id != invitation.receiver_id:
         logger.warning(f"Permission error: User \"{current_user_id}\" is not the receiver of the invitation \"{invitation_id}\"")
@@ -132,11 +127,9 @@ async def request_company_membership(company_id: int,
     # Initialize services 
     request_crud = CompanyRequestsRepository(session)
     company_crud = CompanyRepository(session)
-    user_crud = UserRepository(session)
 
     # Retrieving current user id
-    current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
-    current_user_id = auth.get("id") if not current_user else current_user.id
+    current_user_id = await get_current_user_id(session, auth)
 
     # Validate if requested company exists
     request_company = await company_crud.get_company_by_id(company_id, auth["email"])
@@ -168,7 +161,6 @@ async def request_company_membership_cancel(request_id: int,
 
     # Initialize services 
     request_crud = CompanyRequestsRepository(session)
-    user_crud = UserRepository(session)
 
     # Get request
     request = await request_crud.get_request_by_id(request_id)
@@ -177,8 +169,7 @@ async def request_company_membership_cancel(request_id: int,
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Membership request is not found"))
     
     # Retrieving current user id
-    current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
-    current_user_id = auth.get("id") if not current_user else current_user.id
+    current_user_id = await get_current_user_id(session, auth)
 
     if current_user_id != request.sender_id:
         logger.warning(f"Permission error: User \"{current_user_id}\" is not the sender of the membership request \"{request_id}\"")
@@ -216,9 +207,6 @@ async def accept_request(request_id: int,
     current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
     current_user_id = auth.get("id") if not current_user else current_user.id
 
-    logger.critical(await company_crud.user_has_role(current_user_id, request.company_id, RoleEnum.Admin))
-    logger.critical(await company_crud.user_has_role(current_user_id, request.company_id, RoleEnum.Owner))
-
     # Check if user has permission to accept the request
     if not (await company_crud.user_has_role(current_user_id, request.company_id, RoleEnum.Admin) or
             await company_crud.user_has_role(current_user_id, request.company_id, RoleEnum.Owner)): 
@@ -239,7 +227,6 @@ async def decline_request(request_id: int,
 
     # Initialize services 
     request_crud = CompanyRequestsRepository(session)
-    user_crud = UserRepository(session)
     company_crud = CompanyRepository(session)
     
 
@@ -255,8 +242,7 @@ async def decline_request(request_id: int,
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
     
     # Retrieving current user id
-    current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
-    current_user_id = auth.get("id") if not current_user else current_user.id
+    current_user_id = await get_current_user_id(session, auth)
 
     # Validate if user has permission to decline the request
     if not (await company_crud.user_has_role(current_user_id, request.company_id, RoleEnum.Admin) or

@@ -11,6 +11,7 @@ from app.company_requests.services import CompanyRequestsRepository
 from app.database import get_async_session
 from app.schemas import UserFullSchema
 from app.users.services import UserRepository, error_handler
+from app.utils import get_current_user_id
 
 from .handlers import AuthHandler
 from .schemas import UserLogin, UserSignUp
@@ -76,13 +77,11 @@ async def get_received_invitations(session: AsyncSession = Depends(get_async_ses
 
     # Initialize services
     request_crud = CompanyRequestsRepository(session)
-    user_crud = UserRepository(session)
     
     # Retrieving current user id
-    current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
-    user_id = auth.get("id") if not current_user else current_user.id
+    current_user_id = await get_current_user_id(session, auth)
 
-    res = await request_crud.get_received_requests(receiver_id=user_id)
+    res = await request_crud.get_received_requests(receiver_id=current_user_id)
     logger.info(f"Successfully retrieved current user invitations list")
     return res
 
@@ -94,12 +93,10 @@ async def get_sent_requests(session: AsyncSession = Depends(get_async_session),
     
     # Initialize services
     request_crud = CompanyRequestsRepository(session)
-    user_crud = UserRepository(session)
     
     # Retrieving current user id
-    current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
-    user_id = auth.get("id") if not current_user else current_user.id
+    current_user_id = await get_current_user_id(session, auth)
 
-    res = await request_crud.get_sent_requests(sender_id=user_id)
+    res = await request_crud.get_sent_requests(sender_id=current_user_id)
     logger.info(f"Successfully retrieved current user sent requests list")
     return res
