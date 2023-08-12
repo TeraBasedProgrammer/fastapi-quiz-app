@@ -4,11 +4,12 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import HTTPException
 from pydantic import EmailStr
-from sqlalchemy import delete, select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 from starlette import status
 
+from app.utils import create_model_instance, update_model_instance, delete_model_instance
 from app.auth.handlers import AuthHandler
 from app.auth.schemas import UserSignUp, UserSignUpAuth0
 from app.users.models import User
@@ -28,15 +29,15 @@ class UserRepository:
 
     async def create_user(self, user_data: UserSignUp, auth0: bool = False) -> Dict[str, Any]:
         logger.debug(f"Received data:\nnew_user_data -> {user_data}")
-        new_user = User(
-           **user_data.model_dump() 
-        )
+        new_user = await create_model_instance(self.db_session, User, user_data)
+
         new_user.password = await self.auth.get_password_hash(new_user.password)
         new_user.companies = []
         logger.debug(f"Enctypted the password: \"{new_user.password[:10]}...\"")
+
         if auth0:
             new_user.auth0_registered = True
-        self.db_session.add(new_user)
+
         await self.db_session.commit()
         logger.debug(f"Successfully inserted new user instance into the database")
         return {"id": new_user.id, "email": new_user.email}
@@ -66,28 +67,16 @@ class UserRepository:
 
     async def update_user(self, user_id: int, user_data:UserUpdateRequest) -> Optional[UserSchema]:
         logger.debug(f"Received data:\nuser_data -> {user_data}")
-        query = (
-            update(User)
-            .where(User.id == user_id)
-            .values({key: value for key, value in user_data.model_dump().items() if value is not None})
-            .returning(User)
-        )
-        res = await self.db_session.execute(query)
-        await self.db_session.commit()
+        updated_user = await update_model_instance(self.db_session, User, user_id, user_data)
+        
         logger.debug(f"Successfully updatetd user instance \"{user_id}\"")
-        return res.scalar_one()
+        return updated_user
 
 
     async def delete_user(self, user_id: int) -> Optional[int]:
         logger.debug(f"Received data:\nuser_id -> \"{user_id}\"")
-        query = (
-            delete(User)
-            .where(User.id == user_id)
-            .returning(User.id)
-        )
+        result = await delete_model_instance(self.db_session, User, user_id)
 
-        result = (await self.db_session.execute(query)).scalar_one()
-        await self.db_session.commit()
         logger.debug(f"Successfully deleted user \"{result}\" from the database")
         return result
 

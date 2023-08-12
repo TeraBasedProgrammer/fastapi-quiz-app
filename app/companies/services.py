@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 from starlette import status
 
+from app.utils import create_model_instance, update_model_instance, delete_model_instance
 from app.auth.handlers import AuthHandler
 from app.companies.models import Company, CompanyUser, RoleEnum
 from app.users.models import User
@@ -69,13 +70,9 @@ class CompanyRepository:
     async def create_company(self, company_data: CompanyCreate, current_user_email: EmailStr) -> Dict[str, Any]:
         logger.debug(f"Received data:\nnew company_data -> {company_data}")
         # Initialize new company object
-        new_company = Company(
-           **company_data.model_dump() 
-        )
+        new_company = await create_model_instance(self.db_session, Company, company_data)
         new_company.users = []
 
-        # Insert new company object into the db
-        self.db_session.add(new_company)
         await self.db_session.commit()
 
         # Get current user
@@ -92,28 +89,15 @@ class CompanyRepository:
 
     async def update_company(self, company_id: int, company_data: CompanyUpdate) -> Optional[Company]:
         logger.debug(f"Received data:\ncompany_data -> {company_data}")
-        query = (
-            update(Company)
-            .where(Company.id == company_id)
-            .values({key: value for key, value in company_data.model_dump().items() if value is not None})
-            .returning(Company)
-        )
-        res = await self.db_session.execute(query)
-        await self.db_session.commit()
-        logger.debug(f"Successfully updated company instance \"{company_id}\"")
-        return res.scalar_one()
+        updated_company = await update_model_instance(self.db_session, Company, company_id, company_data)
 
+        logger.debug(f"Successfully updated company instance \"{company_id}\"")
+        return updated_company
 
     async def delete_company(self, company_id: int) -> Optional[int]:
         logger.debug(f"Received data:\ncompany_id -> \"{company_id}\"")
-        query = (
-            delete(Company)
-            .where(Company.id == company_id)
-            .returning(Company.id)
-        )
+        result = await delete_model_instance(self.db_session, Company, company_id) 
 
-        result = (await self.db_session.execute(query)).scalar_one()
-        await self.db_session.commit()
         logger.debug(f"Successfully deleted company \"{result}\" from the database")
         return result
 
