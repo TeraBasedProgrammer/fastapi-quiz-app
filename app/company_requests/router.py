@@ -31,6 +31,35 @@ invitation_router = APIRouter(
     responses={status.HTTP_404_NOT_FOUND: {"description": "Not found"}}
 )
 
+
+@invitation_router.post("/{invitation_id}/accept", response_model=Optional[Dict[str, str]])
+async def accept_invitation(invitation_id: int,
+                            session: AsyncSession = Depends(get_async_session),
+                            auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:
+    logger.info(f"Accepting invitation \"{invitation_id}\"")
+
+    # Initialize services
+    request_crud = CompanyRequestsRepository(session)
+
+    # Get invitation
+    invitation = await request_crud.get_request_by_id(invitation_id)
+    if not invitation:
+        logger.warning(f"Company invitation \"{invitation_id}\" is not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Invitation is not found"))
+    
+    # Retrieving current user id
+    current_user_id = await get_current_user_id(session, auth)
+
+    if current_user_id != invitation.receiver_id:
+        logger.warning(f"Permission error: User \"{current_user_id}\" is not the receiver of the invitation \"{invitation_id}\"")
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
+
+    # Accept the invitation 
+    await request_crud.accept_company_request(invitation, is_invitation=True)
+    logger.info(f"Successfully accepted ivnitation \"{invitation_id}\"")
+    return {"response": "Invitation was successfully accepted"}
+
+
 @invitation_router.delete("/{invitation_id}/cancel", response_model=Optional[Dict[str, str]])
 async def cancel_invitation(invitation_id: int,
                             session: AsyncSession = Depends(get_async_session),
@@ -60,34 +89,6 @@ async def cancel_invitation(invitation_id: int,
     await request_crud.delete_company_request(invitation_id)
     logger.info(f"Successfully canceled ivnitation {invitation_id}")
     return {"response": "Invitation was successfully canceled"}
-
-
-@invitation_router.post("/{invitation_id}/accept", response_model=Optional[Dict[str, str]])
-async def accept_invitation(invitation_id: int,
-                            session: AsyncSession = Depends(get_async_session),
-                            auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:
-    logger.info(f"Accepting invitation \"{invitation_id}\"")
-
-    # Initialize services
-    request_crud = CompanyRequestsRepository(session)
-
-    # Get invitation
-    invitation = await request_crud.get_request_by_id(invitation_id)
-    if not invitation:
-        logger.warning(f"Company invitation \"{invitation_id}\" is not found")
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Invitation is not found"))
-    
-    # Retrieving current user id
-    current_user_id = await get_current_user_id(session, auth)
-
-    if current_user_id != invitation.receiver_id:
-        logger.warning(f"Permission error: User \"{current_user_id}\" is not the receiver of the invitation \"{invitation_id}\"")
-        raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
-
-    # Accept the invitation 
-    await request_crud.accept_company_request(invitation, is_invitation=True)
-    logger.info(f"Successfully accepted ivnitation \"{invitation_id}\"")
-    return {"response": "Invitation was successfully accepted"}
 
 
 @invitation_router.delete("/{invitation_id}/decline", response_model=Optional[Dict[str, str]])
@@ -153,34 +154,6 @@ async def request_company_membership(company_id: int,
     return {"response": "Membership request was successfully sent"}
 
 
-@request_router.delete("/{request_id}/cancel", response_model=Optional[Dict[str, str]])
-async def request_company_membership_cancel(request_id: int,
-                                     session: AsyncSession = Depends(get_async_session),
-                                     auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:  
-    logger.info(f"Cancelling membership request \"{request_id}\"")
-
-    # Initialize services 
-    request_crud = CompanyRequestsRepository(session)
-
-    # Get request
-    request = await request_crud.get_request_by_id(request_id)
-    if not request:
-        logger.warning(f"Company request \"{request_id}\" is not found")
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Membership request is not found"))
-    
-    # Retrieving current user id
-    current_user_id = await get_current_user_id(session, auth)
-
-    if current_user_id != request.sender_id:
-        logger.warning(f"Permission error: User \"{current_user_id}\" is not the sender of the membership request \"{request_id}\"")
-        raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
-
-    # Cancel the request
-    await request_crud.delete_company_request(request_id)
-    logger.info(f"Successfully canceled membership request \"{request_id}\"")
-    return {"response": "Membership request was successfully canceled"}
-
-
 @request_router.post("/{request_id}/accept", response_model=Optional[Dict[str, str]])
 async def accept_request(request_id: int,
                             session: AsyncSession = Depends(get_async_session),
@@ -217,6 +190,34 @@ async def accept_request(request_id: int,
     await request_crud.accept_company_request(request, is_invitation=False)
     logger.info(f"Successfully accepted membership request \"{request_id}\"")
     return {"response": "Membership request was successfully accepted"}
+
+
+@request_router.delete("/{request_id}/cancel", response_model=Optional[Dict[str, str]])
+async def request_company_membership_cancel(request_id: int,
+                                     session: AsyncSession = Depends(get_async_session),
+                                     auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:  
+    logger.info(f"Cancelling membership request \"{request_id}\"")
+
+    # Initialize services 
+    request_crud = CompanyRequestsRepository(session)
+
+    # Get request
+    request = await request_crud.get_request_by_id(request_id)
+    if not request:
+        logger.warning(f"Company request \"{request_id}\" is not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Membership request is not found"))
+    
+    # Retrieving current user id
+    current_user_id = await get_current_user_id(session, auth)
+
+    if current_user_id != request.sender_id:
+        logger.warning(f"Permission error: User \"{current_user_id}\" is not the sender of the membership request \"{request_id}\"")
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
+
+    # Cancel the request
+    await request_crud.delete_company_request(request_id)
+    logger.info(f"Successfully canceled membership request \"{request_id}\"")
+    return {"response": "Membership request was successfully canceled"}
 
 
 @request_router.delete("/{request_id}/decline", response_model=Optional[Dict[str, str]])

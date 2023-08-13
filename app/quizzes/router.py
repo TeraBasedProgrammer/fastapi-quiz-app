@@ -71,6 +71,61 @@ async def create_quizz(quizz_data: QuizzBaseSchema,
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler(f"Company {company_id} already has quizz with provided title"))
 
 
+@quizz_router.post("/questions/", response_model=QuestionSchema)
+async def create_question(question_data: QuestionBaseSchema,
+                          session: AsyncSession = Depends(get_async_session),
+                          auth=Depends(auth_handler.auth_wrapper)) -> QuestionSchema:
+    # Initialize services
+    quizz_crud = QuizzRepository(session)
+
+    # Retrieving current user id
+    current_user_id = await get_current_user_id(session, auth)
+
+    # Validate if requested instances exist
+    request_quizz = await quizz_crud.get_quizz_by_id(quizz_id=question_data.quizz_id, current_user_id=current_user_id, 
+                                                     admin_access_only=True)
+    if not request_quizz:
+        logger.warning(f"Quizz \"{question_data.quizz_id}\" is not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler(f"Quizz with id {question_data.quizz_id} is not found"))
+    
+    try:
+        new_question = await quizz_crud.create_question(question_data=question_data)
+        logger.info(f"New question instance has been successfully created")
+        return new_question
+    except IntegrityError:
+        logger.warning(f"Validation error: Quizz \"{question_data.quizz_id}\" already has question with provided title")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            detail=error_handler(f"Quizz {question_data.quizz_id} already has question with provided title"))
+
+
+@quizz_router.post("/answears/", response_model=Optional[AnswearSchema])
+async def create_answear(answear_data: AnswearCreateSchema,
+                         session: AsyncSession = Depends(get_async_session),
+                         auth=Depends(auth_handler.auth_wrapper)) -> Optional[AnswearSchema]:
+    # Initialize services
+    quizz_crud = QuizzRepository(session)
+
+    # Retrieving current user id
+    current_user_id = await get_current_user_id(session, auth)
+
+    # Validate if requested instances exist
+    request_question = await quizz_crud.get_question_by_id(question_id=answear_data.question_id, current_user_id=current_user_id, 
+                                                           admin_access_only=True)
+    if not request_question:
+        logger.warning(f"Question \"{answear_data.question_id}\" is not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler(f"Question with id {answear_data.question_id} is not found"))
+    
+    question_id = request_question.id
+    try:
+        new_answear = await quizz_crud.create_answear(answear_data=answear_data)
+        logger.info(f"New answear instance has been successfully created")
+        return new_answear
+    except IntegrityError:
+        logger.warning(f"Validation error: Question \"{question_id}\" already has answear with provided title")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            detail=error_handler(f"Question {question_id} already has answear with provided title"))
+    
+                            
 @quizz_router.patch("/{quizz_id}/update", response_model=Optional[QuizzSchema])
 async def update_quizz(quizz_id: int,
                        quizz_data: QuizzUpdateSchema,
@@ -98,52 +153,7 @@ async def update_quizz(quizz_id: int,
         logger.warning(f"Validation error: Company \"{request_quizz.company_id}\" already has quizz with provided title")
         raise HTTPException(status.HTTP_400_BAD_REQUEST,
                             detail=error_handler(f"Company {request_quizz.company_id} already has quizz with provided title"))
-
-
-@quizz_router.delete("/{quizz_id}/delete", response_model=DeletedInstanceResponse)
-async def delete_quizz(quizz_id: int,
-                       session: AsyncSession = Depends(get_async_session),
-                       auth=Depends(auth_handler.auth_wrapper)) -> DeletedInstanceResponse:
-    # Initialize services
-    quizz_crud = QuizzRepository(session)
-
-    # Retrieving current user id
-    current_user_id = await get_current_user_id(session, auth)
-    request_quizz = await quizz_crud.get_quizz_by_id(quizz_id=quizz_id, current_user_id=current_user_id, admin_access_only=True)
-    if not request_quizz:
-        logger.warning(f"Quizz \"{quizz_id}\" is not found")
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested quizz is not found"))
-
-    deleted_quizz_id = await quizz_crud.delete_quizz(quizz_id=request_quizz.id)
-    return DeletedInstanceResponse(deleted_instance_id=deleted_quizz_id)
-
-
-@quizz_router.post("/questions/", response_model=QuestionSchema)
-async def create_question(question_data: QuestionBaseSchema,
-                          session: AsyncSession = Depends(get_async_session),
-                          auth=Depends(auth_handler.auth_wrapper)) -> QuestionSchema:
-    # Initialize services
-    quizz_crud = QuizzRepository(session)
-
-    # Retrieving current user id
-    current_user_id = await get_current_user_id(session, auth)
-
-    # Validate if requested instances exist
-    request_quizz = await quizz_crud.get_quizz_by_id(quizz_id=question_data.quizz_id, current_user_id=current_user_id, 
-                                                     admin_access_only=True)
-    if not request_quizz:
-        logger.warning(f"Quizz \"{question_data.quizz_id}\" is not found")
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler(f"Quizz with id {question_data.quizz_id} is not found"))
     
-    try:
-        new_question = await quizz_crud.create_question(question_data=question_data)
-        logger.info(f"New question instance has been successfully created")
-        return new_question
-    except IntegrityError:
-        logger.warning(f"Validation error: Quizz \"{question_data.quizz_id}\" already has question with provided title")
-        raise HTTPException(status.HTTP_400_BAD_REQUEST,
-                            detail=error_handler(f"Quizz {question_data.quizz_id} already has question with provided title"))
-
 
 @quizz_router.patch("/questions/{question_id}/update", response_model=Optional[QuestionSchema])
 async def update_question(question_id: int,
@@ -178,53 +188,6 @@ async def update_question(question_id: int,
                             detail=error_handler(f"Quiizz {question.quizz.id} already has question with provided title"))
 
 
-@quizz_router.delete("/questions/{question_id}/delete", response_model=DeletedInstanceResponse)
-async def delete_question(question_id: int,
-                       session: AsyncSession = Depends(get_async_session),
-                       auth=Depends(auth_handler.auth_wrapper)) -> DeletedInstanceResponse:
-    # Initialize services
-    quizz_crud = QuizzRepository(session)
-
-    # Retrieving current user id
-    current_user_id = await get_current_user_id(session, auth)
-
-    request_question = await quizz_crud.get_question_by_id(question_id=question_id, current_user_id=current_user_id, admin_access_only=True)
-    if not request_question:
-        logger.warning(f"Question \"{question_id}\" is not found")
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested question is not found"))
-
-    deleted_question_id = await quizz_crud.delete_question(question_id=question_id)
-    return DeletedInstanceResponse(deleted_instance_id=deleted_question_id)
-
-
-@quizz_router.post("/answears/", response_model=Optional[AnswearSchema])
-async def create_answear(answear_data: AnswearCreateSchema,
-                         session: AsyncSession = Depends(get_async_session),
-                         auth=Depends(auth_handler.auth_wrapper)) -> Optional[AnswearSchema]:
-    # Initialize services
-    quizz_crud = QuizzRepository(session)
-
-    # Retrieving current user id
-    current_user_id = await get_current_user_id(session, auth)
-
-    # Validate if requested instances exist
-    request_question = await quizz_crud.get_question_by_id(question_id=answear_data.question_id, current_user_id=current_user_id, 
-                                                           admin_access_only=True)
-    if not request_question:
-        logger.warning(f"Question \"{answear_data.question_id}\" is not found")
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler(f"Question with id {answear_data.question_id} is not found"))
-    
-    question_id = request_question.id
-    try:
-        new_answear = await quizz_crud.create_answear(answear_data=answear_data)
-        logger.info(f"New answear instance has been successfully created")
-        return new_answear
-    except IntegrityError:
-        logger.warning(f"Validation error: Question \"{question_id}\" already has answear with provided title")
-        raise HTTPException(status.HTTP_400_BAD_REQUEST,
-                            detail=error_handler(f"Question {question_id} already has answear with provided title"))
-
-
 @quizz_router.patch("/answears/{answear_id}/update", response_model=Optional[AnswearSchema])
 async def update_answear(answear_data: AnswearUpdateSchema,
                          answear_id: int,
@@ -256,6 +219,42 @@ async def update_answear(answear_data: AnswearUpdateSchema,
         logger.warning(f"Validation error: Question \"{answear.question_id}\" already has answear with provided title")
         raise HTTPException(status.HTTP_400_BAD_REQUEST,
                             detail=error_handler(f"Question {answear.question_id} already has answear with provided title"))
+
+@quizz_router.delete("/{quizz_id}/delete", response_model=DeletedInstanceResponse)
+async def delete_quizz(quizz_id: int,
+                       session: AsyncSession = Depends(get_async_session),
+                       auth=Depends(auth_handler.auth_wrapper)) -> DeletedInstanceResponse:
+    # Initialize services
+    quizz_crud = QuizzRepository(session)
+
+    # Retrieving current user id
+    current_user_id = await get_current_user_id(session, auth)
+    request_quizz = await quizz_crud.get_quizz_by_id(quizz_id=quizz_id, current_user_id=current_user_id, admin_access_only=True)
+    if not request_quizz:
+        logger.warning(f"Quizz \"{quizz_id}\" is not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested quizz is not found"))
+
+    deleted_quizz_id = await quizz_crud.delete_quizz(quizz_id=request_quizz.id)
+    return DeletedInstanceResponse(deleted_instance_id=deleted_quizz_id)
+
+
+@quizz_router.delete("/questions/{question_id}/delete", response_model=DeletedInstanceResponse)
+async def delete_question(question_id: int,
+                       session: AsyncSession = Depends(get_async_session),
+                       auth=Depends(auth_handler.auth_wrapper)) -> DeletedInstanceResponse:
+    # Initialize services
+    quizz_crud = QuizzRepository(session)
+
+    # Retrieving current user id
+    current_user_id = await get_current_user_id(session, auth)
+
+    request_question = await quizz_crud.get_question_by_id(question_id=question_id, current_user_id=current_user_id, admin_access_only=True)
+    if not request_question:
+        logger.warning(f"Question \"{question_id}\" is not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested question is not found"))
+
+    deleted_question_id = await quizz_crud.delete_question(question_id=question_id)
+    return DeletedInstanceResponse(deleted_instance_id=deleted_question_id)
 
 
 @quizz_router.delete("/answears/{answear_id}/delete", response_model=DeletedInstanceResponse)
