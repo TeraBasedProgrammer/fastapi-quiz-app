@@ -8,11 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 from starlette import status
 
-from app.utils import create_model_instance, update_model_instance, delete_model_instance
 from app.auth.handlers import AuthHandler
 from app.companies.models import Company, CompanyUser, RoleEnum
 from app.users.models import User
 from app.users.services import UserRepository, error_handler
+from app.utils import (create_model_instance, delete_model_instance,
+                       update_model_instance)
 
 from .schemas import CompanyCreate, CompanyUpdate
 

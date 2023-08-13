@@ -9,10 +9,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 from starlette import status
 
-from app.utils import create_model_instance, update_model_instance, delete_model_instance
 from app.auth.handlers import AuthHandler
 from app.auth.schemas import UserSignUp, UserSignUpAuth0
 from app.users.models import User
+from app.utils import (create_model_instance, delete_model_instance,
+                       update_model_instance)
 
 from .schemas import UserSchema, UserUpdateRequest
 

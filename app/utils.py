@@ -1,8 +1,8 @@
-from typing import Type, Any
+from typing import Any, Type
 
 from pydantic import BaseModel
+from sqlalchemy import delete, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import update, delete
 
 from .database import Base
 
