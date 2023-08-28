@@ -51,7 +51,12 @@ async def set_question_status(session: AsyncSession, question_id: int):
     question = await quiz_crud.get_question_by_id(question_id, None)
 
     if len(question.answers) >= 2:
-        await _set_question_status(session, question, True)
+        for answer in question.answers:
+            if answer.is_correct:
+                await _set_question_status(session, question, True)
+                break
+        else:
+            await _set_question_status(session, question, False)
     else:
         await _set_question_status(session, question, False)
 

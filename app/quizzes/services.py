@@ -2,7 +2,6 @@ import logging
 from typing import List, Optional
 
 from fastapi import HTTPException
-from fastapi_signals import signal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
@@ -172,8 +171,7 @@ class QuizRepository:
         return result
 
     async def unset_correct_answer(self, question: Question) -> None:
-        pass
-        # for answer in question.answers:
-        #     answer.is_correct = False
-
-        # await self.db_session.commit()
+        for answer in question.answers:
+            if answer.is_correct:
+                await update_model_instance(self.db_session, Answer, answer.id, AnswerUpdateSchema(is_correct=False))
+                logger.info(f"Successfully made previous correct answer incorrect for the question \"{question.id}\"")

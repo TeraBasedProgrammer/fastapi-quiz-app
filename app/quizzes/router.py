@@ -102,7 +102,6 @@ async def create_question(question_data: QuestionBaseSchema,
 
 @quiz_router.post("/answers/", response_model=Optional[AnswerSchema])
 async def create_answer(answer_data: AnswerCreateSchema,
-                        request: Request,
                         background_tasks: BackgroundTasks,
                         session: AsyncSession = Depends(get_async_session),
                         auth=Depends(auth_handler.auth_wrapper),) -> Optional[AnswerSchema]:
@@ -121,10 +120,10 @@ async def create_answer(answer_data: AnswerCreateSchema,
     
     question_id = request_question.id
     try:
-        # create_data = answer_data.model_dump()
-        # if create_data["is_correct"]:
-        #     # Make previous correct answer uncorrect before setting up a new one
-        #     await quiz_crud.unset_correct_answer(question=request_question)
+        # Make previous correct answer uncorrect before setting up a new one
+        create_data = answer_data.model_dump()
+        if create_data["is_correct"]:
+            await quiz_crud.unset_correct_answer(question=request_question)
 
         new_answer = await quiz_crud.create_answer(answer_data=answer_data)
         logger.info(f"New answer instance has been successfully created")
@@ -205,9 +204,10 @@ async def update_question(question_id: int,
 
 @quiz_router.patch("/answers/{answer_id}/update", response_model=Optional[AnswerSchema])
 async def update_answer(answer_data: AnswerUpdateSchema,
-                         answer_id: int,
-                         session: AsyncSession = Depends(get_async_session),
-                         auth=Depends(auth_handler.auth_wrapper)) -> Optional[AnswerSchema]:
+                        answer_id: int,
+                        background_tasks: BackgroundTasks,
+                        session: AsyncSession = Depends(get_async_session),
+                        auth=Depends(auth_handler.auth_wrapper)) -> Optional[AnswerSchema]:
     logger.info(f"Updating answer instance \"{answer_id}\"")
 
     # Initialize services
@@ -223,16 +223,25 @@ async def update_answer(answer_data: AnswerUpdateSchema,
     
     answer = await quiz_crud.get_answer_by_id(answer_id, current_user_id, admin_access_only=True)
     if not answer:
-        logger.warning(f"answer \"{answer_id}\" is not found")
+        logger.warning(f"Answer \"{answer_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler(f"answer with id {answer_id} is not found"))
 
     try:
+        if answer.is_correct:
+            logger.warning(f"User \"{current_user_id}\" tried to unset a correct answer")
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler(f"You can't unset a correct answer directly. Instead mark another answer as correct"))
+
         # Make previous correct answer uncorrect before setting up a new one
         if updated_answer_params.get("is_correct"):
             await quiz_crud.unset_correct_answer(question=answer.question)
 
         updated_answer = await quiz_crud.update_answer(answer_id, answer_data)
         logger.info(f"answer instance {answer_id} has been successfully updated")
+
+        # Set related question (quiz) status
+        background_tasks.add_task(set_question_status, session=session, question_id=answer.question_id)
+        background_tasks.add_task(set_quiz_status, session=session, quiz_id=answer.question.quiz_id)
+
         return updated_answer
     except IntegrityError:
         logger.warning(f"Validation error: Question \"{answer.question_id}\" already has answer with provided title")

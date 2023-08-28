@@ -46,7 +46,7 @@ class Answer(Base):
     is_correct = Column(Boolean, nullable=False, default=False)
     question_id = Column(ForeignKey("questions.id", ondelete="CASCADE"))
 
-    question = relationship("Question", back_populates="answers", lazy='joined')
+    question = relationship("Question", back_populates="answers", lazy='subquery')
 
     __table_args__ = (
          UniqueConstraint("title", "question_id", name="_answer_uc"),

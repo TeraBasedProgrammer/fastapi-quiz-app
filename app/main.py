@@ -7,7 +7,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_pagination import add_pagination
 from fastapi_pagination.utils import disable_installed_extensions_check
-from fastapi_signals import SignalMiddleware, signal
 
 from app.auth.router import auth_router
 from app.companies.router import company_router
@@ -49,7 +48,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.add_middleware(SignalMiddleware, handler=signal)
 
 
 if __name__ == '__main__':
