@@ -254,7 +254,7 @@ async def test_delete_company(
         (
             {"title": "MyCompany1?", "description": "desc", "is_hidden": "False"},
             400,
-            {"detail": "Title may contain only english letters, numbers and special characters ('.', '-', ' ')"}
+            {"detail": "Title may contain only english letters, numbers and special characters (.-'!()/ )"}
         ), 
         (
             {"title": "MyCompany1", "description": "desc", "is_hidden": "Bullshit"},

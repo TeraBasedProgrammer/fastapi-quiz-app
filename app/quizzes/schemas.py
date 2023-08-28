@@ -1,41 +1,51 @@
 import logging
-import re
-from datetime import datetime
 from typing import List, Optional
 
-from fastapi import HTTPException
-from pydantic import BaseModel, Field, field_validator
-from starlette import status
+from pydantic import BaseModel, field_validator
 
-from .models import Answear, Question, Quizz
+from app.utils import validate_text
 
 logger = logging.getLogger("main_logger")
 
 
-class AnswearBaseSchema(BaseModel):
+class AnswerBaseSchema(BaseModel):
     title: str
     question_id: int
+
+    @field_validator("title")
+    def validate_title(cls, value):
+        return validate_text(value)
 
     class Config:
         from_attributes = True
 
 
-class AnswearSchema(AnswearBaseSchema):
+class AnswerSchema(AnswerBaseSchema):
     id: int
-
-
-class AnswearCreateSchema(AnswearBaseSchema):
     is_correct: bool
 
 
-class AnswearUpdateSchema(BaseModel):
+class AnswerCreateSchema(AnswerBaseSchema):
+    is_correct: bool
+
+
+class AnswerUpdateSchema(BaseModel):
     title: Optional[str] = None
     is_correct: Optional[bool] = None
+ 
+    @field_validator("title")
+    def validate_title(cls, value):
+        return validate_text(value)
+    
 
 
 class QuestionBaseSchema(BaseModel):
     title: str
-    quizz_id: int 
+    quiz_id: int 
+
+    @field_validator("title")
+    def validate_title(cls, value):
+        return validate_text(value)
 
     class Config:
         from_attributes = True
@@ -43,7 +53,7 @@ class QuestionBaseSchema(BaseModel):
 
 class QuestionSchema(QuestionBaseSchema):
     id: int
-    answears: Optional[List[AnswearSchema]] = None
+    answers: Optional[List[AnswerSchema]] = None
     
     class Config:
         from_attributes = True
@@ -53,24 +63,38 @@ class QuestionUpdateSchema(BaseModel):
     title: Optional[str] = None
 
 
-class QuizzBaseSchema(BaseModel):
+class QuizBaseSchema(BaseModel):
     title: str
     description: str
     company_id: int
+
+    @field_validator("title")
+    def validate_title(cls, value):
+        return validate_text(value)
 
     class Config:
         from_attributes = True
         from_dict = True
 
 
-class QuizzSchema(QuizzBaseSchema):
+class QuizSchema(QuizBaseSchema):
     id: int
     questions: Optional[List[QuestionSchema]] = None
+    fully_created: bool
 
 
-class QuizzUpdateSchema(BaseModel):
+class QuizUpdateSchema(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
+
+    @field_validator("title")
+    def validate_title(cls, value):
+        return validate_text(value)
+
+
+class UpdateModelStatus(BaseModel):
+    fully_created: bool
+
 
 
     

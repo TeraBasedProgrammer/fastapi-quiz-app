@@ -12,7 +12,7 @@ class UserFullSchema(UserSchema):
         """
         Wraps raw user data into pydantic-friendly model
         @param user_model: raw user object
-        @param public_request: indicates wether hidden 
+        @param public_request: indicates whether hidden
         companies should be included into related company list or not
         """
 
@@ -45,9 +45,9 @@ class CompanyFullSchema(CompanySchema):
         """
         Wraps raw company data into pydantic-friendly model
         @param company_model: raw company object
-        @param public_request: indicates wether hidden 
+        @param public_request: indicates whether hidden
         companies should be returned or not
-        @param user_id: optional int param to validate wether to give access to the hidden company
+        @param user_id: optional int param to validate whether to give access to the hidden company
         (check if user is member of the company or not)
         """
 

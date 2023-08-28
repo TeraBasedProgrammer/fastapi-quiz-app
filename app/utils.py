@@ -1,10 +1,16 @@
+import logging
+import re
 from typing import Any, Type
 
+from fastapi import HTTPException
 from pydantic import BaseModel
 from sqlalchemy import delete, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette import status
 
 from .database import Base
+
+logger = logging.getLogger("main_logger")
 
 
 async def get_global_user_crud(session: AsyncSession):
@@ -56,7 +62,7 @@ async def update_model_instance(
     )
     res = await session.execute(query)
     await session.commit()
-    return res.scalar_one()
+    return res.unique().scalar_one()
 
 
 async def delete_model_instance(session: AsyncSession, model: Base, instance_id: int) -> int:
@@ -69,4 +75,14 @@ async def delete_model_instance(session: AsyncSession, model: Base, instance_id:
     result = (await session.execute(query)).scalar_one()
     await session.commit()
     return result
+
+
+def validate_text(value: str):
+    if not re.compile(r"^[a-zA-Z0-9\-./!,\(\) ]+$").match(value):
+        logger.warning(f"Validation error: 'title' field contains restricted characters")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Title may contain only english letters, numbers and special characters (.-'!()/ )"
+        )
+        
+    return value
     

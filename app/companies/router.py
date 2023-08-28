@@ -12,8 +12,8 @@ from app.company_requests.schemas import (CompanyInvitationSchema,
                                           CompanyRequestSchema)
 from app.company_requests.services import CompanyRequestsRepository
 from app.database import get_async_session
-from app.quizzes.schemas import QuizzSchema
-from app.quizzes.services import QuizzRepository
+from app.quizzes.schemas import QuizSchema
+from app.quizzes.services import QuizRepository
 from app.schemas import CompanyFullSchema
 from app.users.schemas import DeletedInstanceResponse, UserSchema
 from app.users.services import UserRepository, error_handler
@@ -65,12 +65,12 @@ async def get_company(company_id: int,
     return await CompanyFullSchema.from_model(company, single_company_request=True)
 
 
-@company_router.get("/{company_id}/quizzes", response_model=Page[QuizzSchema])
+@company_router.get("/{company_id}/quizzes", response_model=Page[QuizSchema])
 async def get_quizzes(company_id: int,
                       session: AsyncSession = Depends(get_async_session),
-                      auth=Depends(auth_handler.auth_wrapper)) -> Page[QuizzSchema]:
+                      auth=Depends(auth_handler.auth_wrapper)) -> Page[QuizSchema]:
     # Initialize services
-    quizz_crud = QuizzRepository(session)
+    quiz_crud = QuizRepository(session)
     company_crud = CompanyRepository(session)
 
     # Validate if requested instances exist
@@ -79,7 +79,7 @@ async def get_quizzes(company_id: int,
         logger.warning(f"Company \"{company_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested company is not found"))
 
-    return paginate(await quizz_crud.get_company_quizzes(company_id=company_id))
+    return paginate(await quiz_crud.get_company_quizzes(company_id=company_id))
 
 
 @company_router.get("/{company_id}/requests", response_model=Optional[List[CompanyRequestSchema]], response_model_exclude_none=True)

@@ -5,7 +5,7 @@ from sqlalchemy.orm import relationship
 from app.database import Base
 
 
-class Quizz(Base):
+class Quiz(Base):
     __tablename__ = "quizzes"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -15,10 +15,10 @@ class Quizz(Base):
     fully_created = Column(Boolean, nullable=False, default=False)
     # daily_attemps - ?
 
-    questions = relationship("Question", back_populates="quizz", lazy='subquery') 
+    questions = relationship("Question", back_populates="quiz", lazy='joined') 
 
     __table_args__ = (
-         UniqueConstraint("title", "company_id", name="_quizz_uc"),
+         UniqueConstraint("title", "company_id", name="_quiz_uc"),
          )
     
    
@@ -27,27 +27,27 @@ class Question(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     title = Column(String, nullable=False)
-    quizz_id = Column(ForeignKey("quizzes.id", ondelete="CASCADE"))
+    quiz_id = Column(ForeignKey("quizzes.id", ondelete="CASCADE"))
     fully_created = Column(Boolean, nullable=False, default=False)
 
-    quizz = relationship("Quizz", back_populates="questions", lazy='subquery')
-    answears = relationship("Answear", back_populates="question", lazy='subquery')
+    quiz = relationship("Quiz", back_populates="questions", lazy='joined')
+    answers = relationship("Answer", back_populates="question", lazy='joined')
 
     __table_args__ = (
-         UniqueConstraint("title", "quizz_id", name="_question_uc"),
+         UniqueConstraint("title", "quiz_id", name="_question_uc"),
          )
     
 
-class Answear(Base):
-    __tablename__ = "answears"
+class Answer(Base):
+    __tablename__ = "answers"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     title = Column(String, nullable=False)
     is_correct = Column(Boolean, nullable=False, default=False)
     question_id = Column(ForeignKey("questions.id", ondelete="CASCADE"))
 
-    question = relationship("Question", back_populates="answears", lazy='subquery')
+    question = relationship("Question", back_populates="answers", lazy='joined')
 
     __table_args__ = (
-         UniqueConstraint("title", "question_id", name="_answear_uc"),
+         UniqueConstraint("title", "question_id", name="_answer_uc"),
          )
