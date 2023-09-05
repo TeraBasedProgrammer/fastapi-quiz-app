@@ -62,7 +62,7 @@ async def update_user(user_id: int, body: UserUpdateRequest,
     updated_user_params = body.model_dump(exclude_none=True)
     if updated_user_params == {}:
         logger.warning("Validation error: No parameters have been provided")
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("At least one parameter should be provided for user update query"))
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("At least one valid parameter (name, email, password) should be provided for user update query"))
     
     try:
         # Retrieving current user id

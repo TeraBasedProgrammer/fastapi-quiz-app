@@ -298,7 +298,7 @@ async def update_company(company_id: int, body: CompanyUpdate,
     updated_user_params = body.model_dump(exclude_none=True)
     if updated_user_params == {}:
         logger.warning("Validation error: No parameters have been provided")
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("At least one parameter should be provided for user update query"))
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("At least one valid parameter (title, description, is_hidden) should be provided for user update query"))
     try: 
         company_for_update = await company_crud.get_company_by_id(company_id, auth["email"], owner_only=True)
         if not company_for_update:

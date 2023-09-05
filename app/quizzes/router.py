@@ -153,12 +153,15 @@ async def update_quiz(quiz_id: int,
     updated_quiz_params = quiz_data.model_dump(exclude_none=True)
     if updated_quiz_params == {}:
         logger.warning("Validation error: No parameters have been provided")
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("At least one parameter should be provided for quiz update"))
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("At least one valid parameter (title, description) should be provided for quiz update"))
 
     # Retrieving current user id
     current_user_id = await get_current_user_id(session, auth)
     
     request_quiz = await quiz_crud.get_quiz_by_id(quiz_id=quiz_id, current_user_id=current_user_id, admin_access_only=True)
+    if not request_quiz:
+        logger.warning(f"Quiz \"{quiz_id}\" is not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler(f"Quiz with id {quiz_id} is not found"))
     try:
         updated_quiz = await quiz_crud.update_quiz(quiz_id=request_quiz.id, quiz_data=quiz_data)
         logger.info(f"Quiz instance {quiz_id} has been successfully updated")
@@ -182,7 +185,7 @@ async def update_question(question_id: int,
     updated_question_params = question_data.model_dump(exclude_none=True)
     if updated_question_params == {}:
         logger.warning("Validation error: No parameters have been provided")
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("At least one parameter should be provided for question update"))
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("At least one valid parameter (title) should be provided for question update"))
 
     # Retrieving current user id
     current_user_id = await get_current_user_id(session, auth)
@@ -216,7 +219,7 @@ async def update_answer(answer_data: AnswerUpdateSchema,
     updated_answer_params = answer_data.model_dump(exclude_none=True)
     if updated_answer_params == {}:
         logger.warning("Validation error: No parameters have been provided")
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("At least one parameter should be provided for answer update"))
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("At least one valid parameter (title, is_correct) should be provided for answer update"))
 
     # Retrieving current user id
     current_user_id = await get_current_user_id(session, auth)
@@ -224,7 +227,7 @@ async def update_answer(answer_data: AnswerUpdateSchema,
     answer = await quiz_crud.get_answer_by_id(answer_id, current_user_id, admin_access_only=True)
     if not answer:
         logger.warning(f"Answer \"{answer_id}\" is not found")
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler(f"answer with id {answer_id} is not found"))
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler(f"Answer with id {answer_id} is not found"))
 
     try:
         if answer.is_correct:
@@ -260,7 +263,7 @@ async def delete_quiz(quiz_id: int,
     request_quiz = await quiz_crud.get_quiz_by_id(quiz_id=quiz_id, current_user_id=current_user_id, admin_access_only=True)
     if not request_quiz:
         logger.warning(f"Quiz \"{quiz_id}\" is not found")
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested quiz is not found"))
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler(f"Quiz with id {quiz_id} is not found"))
 
     deleted_quiz_id = await quiz_crud.delete_quiz(quiz_id=request_quiz.id)
     return DeletedInstanceResponse(deleted_instance_id=deleted_quiz_id)
@@ -280,7 +283,7 @@ async def delete_question(question_id: int,
     request_question = await quiz_crud.get_question_by_id(question_id=question_id, current_user_id=current_user_id, admin_access_only=True)
     if not request_question:
         logger.warning(f"Question \"{question_id}\" is not found")
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested question is not found"))
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler(f"Question with id {question_id} is not found"))
 
     deleted_question_id = await quiz_crud.delete_question(question_id=question_id)
     
@@ -304,7 +307,7 @@ async def delete_answer(answer_id: int,
     request_answer = await quiz_crud.get_answer_by_id(answer_id=answer_id, current_user_id=current_user_id, admin_access_only=True)
     if not request_answer:
         logger.warning(f"answer \"{answer_id}\" is not found")
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested answer is not found"))
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler(f"Answer with id {answer_id} is not found"))
 
     if request_answer.is_correct:
         logger.warning(f"Permission error: User \"{current_user_id}\" tried to delete correct answear {request_answer.id}")

@@ -6,3 +6,6 @@ filterwarnings = [
     "ignore::DeprecationWarning",
 ]
 asyncio_mode="auto"
+
+[tool.black]
+line-length = 88
