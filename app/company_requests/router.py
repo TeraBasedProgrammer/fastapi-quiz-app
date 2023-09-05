@@ -32,7 +32,7 @@ invitation_router = APIRouter(
 )
 
 
-@invitation_router.post("/{invitation_id}/accept", response_model=Optional[Dict[str, str]])
+@invitation_router.post("/{invitation_id}/accept/", response_model=Optional[Dict[str, str]])
 async def accept_invitation(invitation_id: int,
                             session: AsyncSession = Depends(get_async_session),
                             auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:
@@ -60,7 +60,7 @@ async def accept_invitation(invitation_id: int,
     return {"response": "Invitation was successfully accepted"}
 
 
-@invitation_router.delete("/{invitation_id}/cancel", response_model=Optional[Dict[str, str]])
+@invitation_router.delete("/{invitation_id}/cancel/", response_model=Optional[Dict[str, str]])
 async def cancel_invitation(invitation_id: int,
                             session: AsyncSession = Depends(get_async_session),
                             auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:
@@ -91,7 +91,7 @@ async def cancel_invitation(invitation_id: int,
     return {"response": "Invitation was successfully canceled"}
 
 
-@invitation_router.delete("/{invitation_id}/decline", response_model=Optional[Dict[str, str]])
+@invitation_router.delete("/{invitation_id}/decline/", response_model=Optional[Dict[str, str]])
 async def decline_invitation(invitation_id: int,
                             session: AsyncSession = Depends(get_async_session),
                             auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:
@@ -119,7 +119,7 @@ async def decline_invitation(invitation_id: int,
     return {"response": "Invitation was successfully declined"}
 
 
-@request_router.post("/send/{company_id}", response_model=Optional[Dict[str, str]])
+@request_router.post("/send/{company_id}/", response_model=Optional[Dict[str, str]])
 async def request_company_membership(company_id: int,
                                      session: AsyncSession = Depends(get_async_session),
                                      auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:
@@ -154,7 +154,7 @@ async def request_company_membership(company_id: int,
     return {"response": "Membership request was successfully sent"}
 
 
-@request_router.post("/{request_id}/accept", response_model=Optional[Dict[str, str]])
+@request_router.post("/{request_id}/accept/", response_model=Optional[Dict[str, str]])
 async def accept_request(request_id: int,
                             session: AsyncSession = Depends(get_async_session),
                             auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:
@@ -192,7 +192,7 @@ async def accept_request(request_id: int,
     return {"response": "Membership request was successfully accepted"}
 
 
-@request_router.delete("/{request_id}/cancel", response_model=Optional[Dict[str, str]])
+@request_router.delete("/{request_id}/cancel/", response_model=Optional[Dict[str, str]])
 async def request_company_membership_cancel(request_id: int,
                                      session: AsyncSession = Depends(get_async_session),
                                      auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:  
@@ -220,7 +220,7 @@ async def request_company_membership_cancel(request_id: int,
     return {"response": "Membership request was successfully canceled"}
 
 
-@request_router.delete("/{request_id}/decline", response_model=Optional[Dict[str, str]])
+@request_router.delete("/{request_id}/decline/", response_model=Optional[Dict[str, str]])
 async def decline_request(request_id: int,
                             session: AsyncSession = Depends(get_async_session),
                             auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:

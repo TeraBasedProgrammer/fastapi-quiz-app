@@ -39,7 +39,7 @@ async def get_users(session: AsyncSession = Depends(get_async_session),
     
 
 
-@user_router.get("/{user_id}", response_model=Optional[UserFullSchema], response_model_exclude_none=True)
+@user_router.get("/{user_id}/", response_model=Optional[UserFullSchema], response_model_exclude_none=True)
 async def get_user(user_id: int, 
                    session: AsyncSession = Depends(get_async_session),
                    auth=Depends(auth_handler.auth_wrapper)) -> Optional[UserSchema]:
@@ -53,7 +53,7 @@ async def get_user(user_id: int,
     return await UserFullSchema.from_model(user)
 
 
-@user_router.patch("/{user_id}/update", response_model=Optional[UserFullSchema], response_model_exclude_none=True)
+@user_router.patch("/{user_id}/update/", response_model=Optional[UserFullSchema], response_model_exclude_none=True)
 async def update_user(user_id: int, body: UserUpdateRequest, 
                       session: AsyncSession = Depends(get_async_session),
                       auth=Depends(auth_handler.auth_wrapper)) -> Optional[UserSchema]:
@@ -86,7 +86,7 @@ async def update_user(user_id: int, body: UserUpdateRequest,
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("User with this email already exists"))
 
 
-@user_router.delete("/{user_id}/delete", response_model=Optional[DeletedInstanceResponse])
+@user_router.delete("/{user_id}/delete/", response_model=Optional[DeletedInstanceResponse])
 async def delete_user(user_id: int, 
                       session: AsyncSession = Depends(get_async_session),
                       auth=Depends(auth_handler.auth_wrapper)) -> DeletedInstanceResponse:

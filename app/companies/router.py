@@ -47,7 +47,7 @@ async def get_all_companies(session: AsyncSession = Depends(get_async_session),
     return paginate(response, params)
 
 
-@company_router.get("/{company_id}", response_model=Optional[CompanyFullSchema], response_model_exclude_none=True)
+@company_router.get("/{company_id}/", response_model=Optional[CompanyFullSchema], response_model_exclude_none=True)
 async def get_company(company_id: int, 
                       session: AsyncSession = Depends(get_async_session),
                       auth=Depends(auth_handler.auth_wrapper)) -> Optional[CompanyFullSchema]:
@@ -65,8 +65,9 @@ async def get_company(company_id: int,
     return await CompanyFullSchema.from_model(company, single_company_request=True)
 
 
-@company_router.get("/{company_id}/quizzes", response_model=Page[QuizSchema])
+@company_router.get("/{company_id}/quizzes/", response_model=Page[QuizSchema])
 async def get_quizzes(company_id: int,
+                      params: Params = Depends(),
                       session: AsyncSession = Depends(get_async_session),
                       auth=Depends(auth_handler.auth_wrapper)) -> Page[QuizSchema]:
     # Initialize services
@@ -79,10 +80,10 @@ async def get_quizzes(company_id: int,
         logger.warning(f"Company \"{company_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested company is not found"))
 
-    return paginate(await quiz_crud.get_company_quizzes(company_id=company_id))
+    return paginate(await quiz_crud.get_company_quizzes(company_id=company_id), params)
 
 
-@company_router.get("/{company_id}/requests", response_model=Optional[List[CompanyRequestSchema]], response_model_exclude_none=True)
+@company_router.get("/{company_id}/requests/", response_model=Optional[List[CompanyRequestSchema]], response_model_exclude_none=True)
 async def get_received_requests(company_id: int, 
                        session: AsyncSession = Depends(get_async_session),
                        auth=Depends(auth_handler.auth_wrapper)) -> Optional[List[CompanyRequestSchema]]:
@@ -102,7 +103,7 @@ async def get_received_requests(company_id: int,
     return res
 
 
-@company_router.get("/{company_id}/invitations", response_model=Optional[List[CompanyInvitationSchema]], response_model_exclude_none=True)
+@company_router.get("/{company_id}/invitations/", response_model=Optional[List[CompanyInvitationSchema]], response_model_exclude_none=True)
 async def get_sent_invitations(company_id: int, 
                        session: AsyncSession = Depends(get_async_session),
                        auth=Depends(auth_handler.auth_wrapper)) -> Optional[List[CompanyInvitationSchema]]:
@@ -122,7 +123,7 @@ async def get_sent_invitations(company_id: int,
     return res
 
 
-@company_router.get("/{company_id}/admins", response_model=List[UserSchema], response_model_exclude_none=True)
+@company_router.get("/{company_id}/admins/", response_model=List[UserSchema], response_model_exclude_none=True)
 async def get_company_admin_list(company_id: int,
                                  session: AsyncSession = Depends(get_async_session),
                                  auth=Depends(auth_handler.auth_wrapper)) -> List[UserSchema]:
@@ -156,7 +157,7 @@ async def create_company(company: CompanyCreate,
     return result
 
 
-@company_router.post("/{company_id}/invite/{user_id}", 
+@company_router.post("/{company_id}/invite/{user_id}/", 
                      response_model=Optional[Dict[str, str]],
                      status_code=status.HTTP_201_CREATED)
 async def invite_user(company_id: int, 
@@ -197,7 +198,7 @@ async def invite_user(company_id: int,
     return {"response": "Invitation was successfully sent"}
 
 
-@company_router.post("/{company_id}/set-admin/{user_id}", response_model=Optional[Dict[str, Any]])
+@company_router.post("/{company_id}/set-admin/{user_id}/", response_model=Optional[Dict[str, Any]])
 async def give_admin_role(company_id: int, 
                           user_id: int,
                           session: AsyncSession = Depends(get_async_session),
@@ -243,7 +244,7 @@ async def give_admin_role(company_id: int,
     return {"response": f"User {request_user.email} was successfuly assigned as admin"}
     
 
-@company_router.post("/{company_id}/unset-admin/{user_id}", response_model=Optional[Dict[str, str]])
+@company_router.post("/{company_id}/unset-admin/{user_id}/", response_model=Optional[Dict[str, str]])
 async def take_admin_role(company_id: int, 
                           user_id: int,
                           session: AsyncSession = Depends(get_async_session),
@@ -288,7 +289,7 @@ async def take_admin_role(company_id: int,
     
     return {"response": f"The admin role has been taken away from the user {request_user.email}"}
 
-@company_router.patch("/{company_id}/update", response_model=Optional[CompanyFullSchema], response_model_exclude_none=True)
+@company_router.patch("/{company_id}/update/", response_model=Optional[CompanyFullSchema], response_model_exclude_none=True)
 async def update_company(company_id: int, body: CompanyUpdate, 
                       session: AsyncSession = Depends(get_async_session),
                       auth=Depends(auth_handler.auth_wrapper)) -> Optional[CompanyFullSchema]:
@@ -311,7 +312,7 @@ async def update_company(company_id: int, body: CompanyUpdate,
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("Company with this title already exists"))
 
 
-@company_router.delete("/{company_id}/delete", response_model=Optional[DeletedInstanceResponse], response_model_exclude_none=True)
+@company_router.delete("/{company_id}/delete/", response_model=Optional[DeletedInstanceResponse], response_model_exclude_none=True)
 async def delete_company(company_id: int, 
                       session: AsyncSession = Depends(get_async_session),
                       auth=Depends(auth_handler.auth_wrapper)) -> DeletedInstanceResponse:
@@ -329,7 +330,7 @@ async def delete_company(company_id: int,
     return DeletedInstanceResponse(deleted_instance_id=deleted_company_id)
 
 
-@company_router.delete("/{company_id}/kick/{user_id}", response_model=Optional[Dict[str, str]])
+@company_router.delete("/{company_id}/kick/{user_id}/", response_model=Optional[Dict[str, str]])
 async def kick_user(company_id: int,
                     user_id: int,
                     session: AsyncSession = Depends(get_async_session),
@@ -376,7 +377,7 @@ async def kick_user(company_id: int,
     return {"response": f"User {request_user.email} was successfully kicked from the company"}
 
 
-@company_router.delete("/{company_id}/leave", response_model=Optional[Dict[str, str]])
+@company_router.delete("/{company_id}/leave/", response_model=Optional[Dict[str, str]])
 async def leave_company(company_id: int,
                         session: AsyncSession = Depends(get_async_session),
                         auth=Depends(auth_handler.auth_wrapper)) -> Optional[Dict[str, str]]:

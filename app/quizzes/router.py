@@ -29,7 +29,7 @@ quiz_router = APIRouter(
 )
 
 
-@quiz_router.get("/{quiz_id}", response_model=Optional[QuizSchema])
+@quiz_router.get("/{quiz_id}/", response_model=Optional[QuizSchema])
 async def get_quiz(quiz_id: int,
                     session: AsyncSession = Depends(get_async_session),
                     auth=Depends(auth_handler.auth_wrapper)):
@@ -140,7 +140,7 @@ async def create_answer(answer_data: AnswerCreateSchema,
                             detail=error_handler(f"Question {question_id} already has answer with provided title"))
     
                             
-@quiz_router.patch("/{quiz_id}/update", response_model=Optional[QuizSchema])
+@quiz_router.patch("/{quiz_id}/update/", response_model=Optional[QuizSchema])
 async def update_quiz(quiz_id: int,
                       quiz_data: QuizUpdateSchema,
                       session: AsyncSession = Depends(get_async_session),
@@ -169,7 +169,7 @@ async def update_quiz(quiz_id: int,
                             detail=error_handler(f"Company {request_quiz.company_id} already has quiz with provided title"))
     
 
-@quiz_router.patch("/questions/{question_id}/update", response_model=Optional[QuestionSchema])
+@quiz_router.patch("/questions/{question_id}/update/", response_model=Optional[QuestionSchema])
 async def update_question(question_id: int,
                        question_data: QuestionUpdateSchema,
                        session: AsyncSession = Depends(get_async_session),
@@ -202,7 +202,7 @@ async def update_question(question_id: int,
                             detail=error_handler(f"Quiizz {question.quiz.id} already has question with provided title"))
 
 
-@quiz_router.patch("/answers/{answer_id}/update", response_model=Optional[AnswerSchema])
+@quiz_router.patch("/answers/{answer_id}/update/", response_model=Optional[AnswerSchema])
 async def update_answer(answer_data: AnswerUpdateSchema,
                         answer_id: int,
                         background_tasks: BackgroundTasks,
@@ -248,7 +248,7 @@ async def update_answer(answer_data: AnswerUpdateSchema,
         raise HTTPException(status.HTTP_400_BAD_REQUEST,
                             detail=error_handler(f"Question {answer.question_id} already has answer with provided title"))
 
-@quiz_router.delete("/{quiz_id}/delete", response_model=DeletedInstanceResponse)
+@quiz_router.delete("/{quiz_id}/delete/", response_model=DeletedInstanceResponse)
 async def delete_quiz(quiz_id: int,
                       session: AsyncSession = Depends(get_async_session),
                       auth=Depends(auth_handler.auth_wrapper)) -> DeletedInstanceResponse:
@@ -266,7 +266,7 @@ async def delete_quiz(quiz_id: int,
     return DeletedInstanceResponse(deleted_instance_id=deleted_quiz_id)
 
 
-@quiz_router.delete("/questions/{question_id}/delete", response_model=DeletedInstanceResponse)
+@quiz_router.delete("/questions/{question_id}/delete/", response_model=DeletedInstanceResponse)
 async def delete_question(question_id: int,
                           background_tasks: BackgroundTasks,
                           session: AsyncSession = Depends(get_async_session),
@@ -290,7 +290,7 @@ async def delete_question(question_id: int,
     return DeletedInstanceResponse(deleted_instance_id=deleted_question_id)
 
 
-@quiz_router.delete("/answers/{answer_id}/delete", response_model=DeletedInstanceResponse)
+@quiz_router.delete("/answers/{answer_id}/delete/", response_model=DeletedInstanceResponse)
 async def delete_answer(answer_id: int,
                          background_tasks: BackgroundTasks,
                          session: AsyncSession = Depends(get_async_session),
