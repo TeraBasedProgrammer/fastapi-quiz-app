@@ -1,10 +1,11 @@
-from typing import Callable, Any, Dict
+from typing import Any, Callable, Dict
 
-import pytest
 import httpx
+import pytest
 from pydantic import EmailStr
 
 from app.companies.models import RoleEnum
+
 from .conftest import DEFAULT_USER_DATA
 
 
@@ -28,7 +29,7 @@ async def test_get_user_invitations(
     await create_company_request_instance(sender_id=None, receiver_id=1, company_id=2)
 
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
-    response = await client.get("/me/invitations", headers={"Authorization": f"Bearer {token}"})
+    response = await client.get("/me/invitations/", headers={"Authorization": f"Bearer {token}"})
 
     data = response.json()[0]
 
@@ -42,8 +43,8 @@ async def test_get_user_invitations(
     
 async def test_get_user_requests(
           client: httpx.AsyncClient,
-          create_user_instance: Callable[..., Any],
           create_auth_jwt: Callable[..., Any],
+          create_user_instance: Callable[..., Any],
           create_company_instance: Callable[..., Any], 
           create_user_company_instance: Callable[..., Any], 
           create_company_request_instance: Callable[..., Any],
@@ -61,7 +62,7 @@ async def test_get_user_requests(
     await create_company_request_instance(sender_id=1, receiver_id=None, company_id=2)
 
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
-    response = await client.get("/me/requests", headers={"Authorization": f"Bearer {token}"})
+    response = await client.get("/me/requests/", headers={"Authorization": f"Bearer {token}"})
 
     data = response.json()[0]
 
@@ -89,7 +90,7 @@ async def test_send_membership_request(
     await create_user_instance(DEFAULT_USER_DATA["email"])
 
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
-    server_response = await client.post(f"/requests/send/1", headers={"Authorization": f"Bearer {token}"})
+    server_response = await client.post(f"/requests/send/1/", headers={"Authorization": f"Bearer {token}"})
 
     assert server_response.status_code == 200
     assert server_response.json() == {"response": "Membership request was successfully sent"}
@@ -124,7 +125,7 @@ async def test_send_membership_request_error(
         await create_user_company_instance(company_id=company_id, user_id=2, role=member_role)
 
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
-    server_response = await client.post(f"/requests/send/{company_id}", headers={"Authorization": f"Bearer {token}"})
+    server_response = await client.post(f"/requests/send/{company_id}/", headers={"Authorization": f"Bearer {token}"})
 
     assert server_response.status_code == status_code
     assert server_response.json() == response
@@ -150,7 +151,7 @@ async def test_send_request_with_received_invitation(
     await create_company_request_instance(receiver_id=2, company_id=1)
 
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
-    server_response = await client.post(f"/requests/send/1", headers={"Authorization": f"Bearer {token}"})
+    server_response = await client.post(f"/requests/send/1/", headers={"Authorization": f"Bearer {token}"})
 
     assert server_response.status_code == 400
     assert server_response.json() == {"detail": {"error": "You have already received invitation to the company 1"}}
@@ -176,7 +177,7 @@ async def test_cancel_sent_request(
     await create_company_request_instance(sender_id=2, company_id=1)
 
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
-    server_response = await client.delete(f"/requests/1/cancel", headers={"Authorization": f"Bearer {token}"})
+    server_response = await client.delete(f"/requests/1/cancel/", headers={"Authorization": f"Bearer {token}"})
 
     assert server_response.status_code == 200
     assert server_response.json() == {"response": "Membership request was successfully canceled"}
@@ -217,7 +218,7 @@ async def test_cancel_sent_request_error(
     await create_company_request_instance(sender_id=sender_id, company_id=1)
 
     token = await create_auth_jwt(auth_email)
-    server_response = await client.delete(f"/requests/{request_id}/cancel", headers={"Authorization": f"Bearer {token}"})
+    server_response = await client.delete(f"/requests/{request_id}/cancel/", headers={"Authorization": f"Bearer {token}"})
 
     assert server_response.status_code == status_code
     assert server_response.json() == response
@@ -243,7 +244,7 @@ async def test_accept_invitation(
     await create_company_request_instance(receiver_id=2, company_id=1)
 
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
-    server_response = await client.post(f"/invitations/1/accept", headers={"Authorization": f"Bearer {token}"})
+    server_response = await client.post(f"/invitations/1/accept/", headers={"Authorization": f"Bearer {token}"})
 
     assert server_response.status_code == 200
     assert server_response.json() == {"response": "Invitation was successfully accepted"}
@@ -283,7 +284,7 @@ async def test_accept_invitation_error(
     await create_company_request_instance(receiver_id=receiver_id, company_id=1)
 
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
-    server_response = await client.post(f"/invitations/{request_id}/accept", headers={"Authorization": f"Bearer {token}"})
+    server_response = await client.post(f"/invitations/{request_id}/accept/", headers={"Authorization": f"Bearer {token}"})
 
     assert server_response.status_code == status_code
     assert server_response.json() == response
@@ -309,7 +310,7 @@ async def test_decline_invitation(
     await create_company_request_instance(receiver_id=2, company_id=1)
 
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
-    server_response = await client.delete(f"/invitations/1/decline", headers={"Authorization": f"Bearer {token}"})
+    server_response = await client.delete(f"/invitations/1/decline/", headers={"Authorization": f"Bearer {token}"})
 
     assert server_response.status_code == 200
     assert server_response.json() == {"response": "Invitation was successfully declined"}
@@ -333,7 +334,7 @@ async def test_decline_invitation_error(
           create_company_instance: Callable[..., Any],
           create_user_company_instance: Callable[..., Any],
           create_company_request_instance: Callable[..., Any]) -> None:
-   # Instanciate test objects
+    # Instanciate test objects
     # Sender objects
     await create_user_instance("owner@example.com")
     await create_company_instance()
@@ -349,8 +350,8 @@ async def test_decline_invitation_error(
     await create_company_request_instance(receiver_id=receiver_id, company_id=1)
 
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
-    server_response = await client.delete(f"/invitations/{request_id}/decline", headers={"Authorization": f"Bearer {token}"})
+    server_response = await client.delete(f"/invitations/{request_id}/decline/", headers={"Authorization": f"Bearer {token}"})
 
     assert server_response.status_code == status_code
     assert server_response.json() == response
-
+    

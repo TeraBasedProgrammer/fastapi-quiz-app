@@ -12,6 +12,8 @@ from app.auth.handlers import AuthHandler
 from app.companies.models import Company, CompanyUser, RoleEnum
 from app.users.models import User
 from app.users.services import UserRepository, error_handler
+from app.utils import (create_model_instance, delete_model_instance,
+                       update_model_instance)
 
 from .schemas import CompanyCreate, CompanyUpdate
 
@@ -69,13 +71,9 @@ class CompanyRepository:
     async def create_company(self, company_data: CompanyCreate, current_user_email: EmailStr) -> Dict[str, Any]:
         logger.debug(f"Received data:\nnew company_data -> {company_data}")
         # Initialize new company object
-        new_company = Company(
-           **company_data.model_dump() 
-        )
+        new_company = await create_model_instance(self.db_session, Company, company_data)
         new_company.users = []
 
-        # Insert new company object into the db
-        self.db_session.add(new_company)
         await self.db_session.commit()
 
         # Get current user
@@ -92,33 +90,20 @@ class CompanyRepository:
 
     async def update_company(self, company_id: int, company_data: CompanyUpdate) -> Optional[Company]:
         logger.debug(f"Received data:\ncompany_data -> {company_data}")
-        query = (
-            update(Company)
-            .where(Company.id == company_id)
-            .values({key: value for key, value in company_data.model_dump().items() if value is not None})
-            .returning(Company)
-        )
-        res = await self.db_session.execute(query)
-        await self.db_session.commit()
-        logger.debug(f"Successfully updated company instance \"{company_id}\"")
-        return res.scalar_one()
+        updated_company = await update_model_instance(self.db_session, Company, company_id, company_data)
 
+        logger.debug(f"Successfully updated company instance \"{company_id}\"")
+        return updated_company
 
     async def delete_company(self, company_id: int) -> Optional[int]:
         logger.debug(f"Received data:\ncompany_id -> \"{company_id}\"")
-        query = (
-            delete(Company)
-            .where(Company.id == company_id)
-            .returning(Company.id)
-        )
+        result = await delete_model_instance(self.db_session, Company, company_id) 
 
-        result = (await self.db_session.execute(query)).scalar_one()
-        await self.db_session.commit()
         logger.debug(f"Successfully deleted company \"{result}\" from the database")
         return result
 
 
-    async def check_user_membership(self, user_id: int, company_id: int) -> Optional[bool]:
+    async def check_user_membership(self, user_id: int, company_id: int) -> bool:
         logger.debug(f"Received data:\ncompany_id -> {company_id}\nuser_id -> {user_id}")
         result = await self.db_session.execute(select(CompanyUser).where((CompanyUser.company_id == company_id) & (CompanyUser.user_id == user_id)))
         
@@ -127,17 +112,24 @@ class CompanyRepository:
             logger.debug(f"User {user_id} is a member of the company {company_id}")
             return True
         logger.debug(f"User {user_id} is not a member of the company {company_id}")
+        return False
         
  
-    async def user_has_role(self, user_id: int, company_id: int, role: RoleEnum) -> Optional[bool]:
+    async def user_has_role(self, user_id: int, company_id: int, role: RoleEnum) -> bool:
         logger.debug(f"Received data:\ncompany_id -> {company_id}\nuser_id -> {user_id}\nrole -> {role}")
         result = await self.db_session.execute(select(CompanyUser).where((CompanyUser.company_id == company_id) & (CompanyUser.user_id == user_id)))
         
         data = result.scalar_one_or_none()
-        if data and data.role == role:
-            logger.debug(f"User {user_id} is the {role} in the company {company_id}")
+
+        # If user is not the mebmer, return false
+        if not data:
+            return False 
+
+        if data.role == role:
+            logger.debug(f"User {user_id} is the {role.value} in the company {company_id}")
             return True
-        logger.debug(f"User {user_id} is not the {role} in the company {company_id}")      
+        logger.debug(f"User {user_id} is not the {role.value} in the company {company_id}")      
+        return False
 
     async def get_admins(self, company_id: int) -> List[User]:
         logger.debug(f"Received data:\ncompany_id -> {company_id}")

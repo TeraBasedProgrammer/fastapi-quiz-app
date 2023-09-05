@@ -5,26 +5,33 @@ from typing import Any, Callable, Dict
 import httpx
 import pytest
 
-from .conftest import DEFAULT_COMPANY_DATA, DEFAULT_USER_DATA
+from app.companies.models import RoleEnum
+
+from .conftest import (DEFAULT_COMPANY_DATA, DEFAULT_QUIZ_DATA,
+                       DEFAULT_USER_DATA)
 
 
-async def test_get_companies_empty(client: httpx.AsyncClient,
-                                   create_auth_jwt: Callable[..., Any],
-                                   create_user_instance: Callable[..., Any]) -> None:
+async def test_get_companies_empty(
+          client: httpx.AsyncClient,
+          create_auth_jwt: Callable[..., Any],
+          create_user_instance: Callable[..., Any]) -> None:
+    # Initialize test objects
     await create_user_instance()
-    token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
 
+    token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
     response = await client.get("/companies/", headers={"Authorization": f"Bearer {token}"})
+
     assert response.status_code == 200
     assert response.json() == {"items": [], "total": 0, "page": 1, "size": 50, "pages": 0}
 
 
 async def test_get_companies(client: httpx.AsyncClient, 
-                             create_default_company_object: Callable[..., Any],
-                             create_auth_jwt: Callable[..., Any]) -> None:
+                             create_auth_jwt: Callable[..., Any],
+                             create_default_company_object: Callable[..., Any]) -> None:
+    # Initialize test objects
     await create_default_company_object()
-    token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
 
+    token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
     response = await client.get("/companies/", headers={"Authorization": f"Bearer {token}"})
     json_response = response.json()
 
@@ -46,17 +53,19 @@ async def test_get_companies(client: httpx.AsyncClient,
     assert users[0]["registered_at"].split("T")[0] == str(datetime.utcnow().date())
 
 
-async def test_get_companies_hidden(client: httpx.AsyncClient, 
-                                    create_default_company_object: Callable[..., Any],
-                                    create_auth_jwt: Callable[..., Any],
-                                    create_company_instance: Callable[..., Any]) -> None:
+async def test_get_companies_hidden(
+          client: httpx.AsyncClient, 
+          create_auth_jwt: Callable[..., Any],
+          create_company_instance: Callable[..., Any],
+          create_default_company_object: Callable[..., Any]) -> None:
+    # Initialize test objects
     await create_default_company_object()
-    token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
 
-    # Create additional hidden companies
+    # Additional hidden companies
     await create_company_instance(title="hiddenCompany", is_hidden=True)
     await create_company_instance(title="secondHiddenCompany", is_hidden=True)
 
+    token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
     response = await client.get("/companies/", headers={"Authorization": f"Bearer {token}"})
     json_response = response.json()
 
@@ -80,21 +89,22 @@ async def test_get_companies_hidden(client: httpx.AsyncClient,
     ],
 )
 async def test_get_companies_paginated(
-        client: httpx.AsyncClient,
-        page: int,
-        size: int,
-        items_is_not_empty: bool,
-        total_expected: int,
-        pages_expected: int,
-        create_default_company_object: Callable[..., Any],
-        create_company_instance: Callable[..., Any],
-        create_auth_jwt: Callable[..., Any]) -> None:
+          page: int,
+          size: int,
+          total_expected: int,
+          pages_expected: int,
+          items_is_not_empty: bool,
+          client: httpx.AsyncClient,
+          create_auth_jwt: Callable[..., Any],
+          create_company_instance: Callable[..., Any],
+          create_default_company_object: Callable[..., Any]) -> None:
+    # Initialize test objects
     await create_default_company_object()
-    token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
 
     # Create additional company
     await create_company_instance(title="Company", is_hidden=False)
 
+    token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
     response = await client.get(f"/companies/?page={page}&size={size}", headers={"Authorization": f"Bearer {token}"})
     json_response = response.json()
 
@@ -105,18 +115,19 @@ async def test_get_companies_paginated(
     assert json_response["size"] == size
 
 
-async def test_get_company_by_id(client: httpx.AsyncClient,
-                                 create_default_company_object: Callable[..., Any],
-                                 create_auth_jwt: Callable[..., Any]) -> None:
+async def test_get_company_by_id(
+          client: httpx.AsyncClient,
+          create_auth_jwt: Callable[..., Any],
+          create_default_company_object: Callable[..., Any]) -> None:
+    # Initialize test objects
     await create_default_company_object()
 
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
-    response = await client.get("/companies/1", headers={"Authorization": f"Bearer {token}"})
+    response = await client.get("/companies/1/", headers={"Authorization": f"Bearer {token}"})
     json_response = response.json()
 
     assert response.status_code == 200
     assert isinstance(json_response, dict)
-
 
     assert json_response["id"] == DEFAULT_COMPANY_DATA["id"]
     assert json_response["title"] == DEFAULT_COMPANY_DATA["title"]
@@ -154,16 +165,17 @@ async def test_get_company_by_id(client: httpx.AsyncClient,
     )
 )
 async def test_get_company_by_id_validation(
-        client: httpx.AsyncClient,
-        company_id: int | Any,
-        status_code: int,
-        error_response: dict[str, Any],
-        create_default_company_object: Callable[..., Any],
-        create_auth_jwt: Callable[..., Any]) -> None:
+          status_code: int,
+          company_id: int | Any,
+          client: httpx.AsyncClient,
+          error_response: dict[str, Any],
+          create_auth_jwt: Callable[..., Any],
+          create_default_company_object: Callable[..., Any]) -> None:
+    # Initialize test objects
     await create_default_company_object()
-    token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
 
-    response = await client.get(f"companies/{company_id}", headers={"Authorization": f"Bearer {token}"})
+    token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
+    response = await client.get(f"companies/{company_id}/", headers={"Authorization": f"Bearer {token}"})
 
     assert response.status_code == status_code
     assert response.json() == error_response
@@ -176,14 +188,14 @@ async def test_get_company_by_id_validation(
             (DEFAULT_USER_DATA["email"], 200)
         )
 )
-async def test_get_hidden_company_by_id(client: httpx.AsyncClient,
-                                        owner_email: str,
-                                        status_code: int,
-                                        create_company_instance: Callable[..., Any],
-                                        create_auth_jwt: Callable[..., Any],
-                                        create_user_instance: Callable[..., Any],
-                                        create_user_company_instance: Callable[..., Any]) -> None:
-                                        
+async def test_get_hidden_company_by_id(
+          owner_email: str,
+          status_code: int,
+          client: httpx.AsyncClient,
+          create_auth_jwt: Callable[..., Any],
+          create_user_instance: Callable[..., Any],
+          create_company_instance: Callable[..., Any],
+          create_user_company_instance: Callable[..., Any]) -> None:
     # Create hidden company
     await create_user_instance(email=owner_email)
     await create_company_instance(is_hidden=True)
@@ -194,7 +206,7 @@ async def test_get_hidden_company_by_id(client: httpx.AsyncClient,
         await create_user_instance()
 
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
-    server_response = await client.get(f"companies/1", headers={"Authorization": f"Bearer {token}"})
+    server_response = await client.get(f"companies/1/", headers={"Authorization": f"Bearer {token}"})
 
     assert server_response.status_code == status_code
 
@@ -207,15 +219,16 @@ async def test_get_hidden_company_by_id(client: httpx.AsyncClient,
             (1, DEFAULT_USER_DATA["email"], 200, {"deleted_instance_id": 1})
         )
 )
-async def test_delete_company(client: httpx.AsyncClient,
-                              response: Dict[str, Any],
-                            company_id: int,
-                            owner_email: str,
-                            status_code: int,
-                            create_company_instance: Callable[..., Any],
-                            create_auth_jwt: Callable[..., Any],
-                            create_user_instance: Callable[..., Any],
-                            create_user_company_instance: Callable[..., Any]) -> None:
+async def test_delete_company(
+          company_id: int,
+          owner_email: str,
+          status_code: int,
+          response: Dict[str, Any],
+          client: httpx.AsyncClient,
+          create_auth_jwt: Callable[..., Any],
+          create_user_instance: Callable[..., Any],
+          create_company_instance: Callable[..., Any],
+          create_user_company_instance: Callable[..., Any]) -> None:
     # Create company
     await create_user_instance(email=owner_email)
     await create_company_instance()
@@ -226,13 +239,12 @@ async def test_delete_company(client: httpx.AsyncClient,
         await create_user_instance()
 
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
-    server_response = await client.delete(f"companies/{company_id}/delete", headers={"Authorization": f"Bearer {token}"})
+    server_response = await client.delete(f"companies/{company_id}/delete/", headers={"Authorization": f"Bearer {token}"})
 
     assert server_response.status_code == status_code
     assert server_response.json() == response
 
 
-# Signup
 @pytest.mark.parametrize(
     "company_data, status_code, response",
     (
@@ -244,7 +256,7 @@ async def test_delete_company(client: httpx.AsyncClient,
         (
             {"title": "MyCompany1?", "description": "desc", "is_hidden": "False"},
             400,
-            {"detail": "Title may contain only english letters, numbers and special characters ('.', '-', ' ')"}
+            {"detail": "Title may contain only english letters, numbers and special characters (.-'!()/ )"}
         ), 
         (
             {"title": "MyCompany1", "description": "desc", "is_hidden": "Bullshit"},
@@ -258,12 +270,13 @@ async def test_delete_company(client: httpx.AsyncClient,
         ), 
     )
 )
-async def test_create_company(client: httpx.AsyncClient,
-                      company_data: dict[str, Any],
-                      status_code: int,
-                      response: dict[str, Any],
-                      create_user_instance: Callable[..., Any],
-                      create_auth_jwt: Callable[..., Any]) -> None:
+async def test_create_company(
+          status_code: int,
+          client: httpx.AsyncClient,
+          response: dict[str, Any],
+          company_data: dict[str, Any],
+          create_auth_jwt: Callable[..., Any],
+          create_user_instance: Callable[..., Any]) -> None:
     await create_user_instance()
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])     
 
@@ -272,9 +285,10 @@ async def test_create_company(client: httpx.AsyncClient,
     assert server_response.json() == response
 
 
-async def test_company_duplicate(client: httpx.AsyncClient, 
-                                 create_auth_jwt: Callable[..., Any],
-                                 create_default_company_object: Callable[..., Any]) -> None:
+async def test_company_duplicate(
+          client: httpx.AsyncClient, 
+          create_auth_jwt: Callable[..., Any],
+          create_default_company_object: Callable[..., Any]) -> None:
     await create_default_company_object()
 
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
@@ -291,25 +305,28 @@ async def test_company_duplicate(client: httpx.AsyncClient,
     (
         ({"title": "NewCompanyTitle"}, 200),
         ({"title": "dsfdss?"}, 400),
+        ({}, 400),
     )
 )
-async def test_update_company(client: httpx.AsyncClient,
-                              update_data: dict[str, Any],
-                              status_code: int,
-                           create_default_company_object: Callable[..., Any],
-                           create_auth_jwt: Callable[..., Any]) -> None:
+async def test_update_company(
+          status_code: int,
+          client: httpx.AsyncClient,
+          update_data: dict[str, Any],
+          create_auth_jwt: Callable[..., Any],
+          create_default_company_object: Callable[..., Any]) -> None:
     await create_default_company_object()
 
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
-    server_response = await client.patch("/companies/1/update", data=json.dumps(update_data), headers={"Authorization": f"Bearer {token}"})
+    server_response = await client.patch("/companies/1/update/", data=json.dumps(update_data), headers={"Authorization": f"Bearer {token}"})
     assert server_response.status_code == status_code
 
 
-async def test_update_company_permission(client: httpx.AsyncClient,
-                           create_company_instance: Callable[..., Any],
-                           create_user_instance: Callable[..., Any],
-                           create_user_company_instance: Callable[..., Any],
-                           create_auth_jwt: Callable[..., Any]) -> None:
+async def test_update_company_permission(
+          client: httpx.AsyncClient,
+          create_auth_jwt: Callable[..., Any],
+          create_user_instance: Callable[..., Any],
+          create_company_instance: Callable[..., Any],
+          create_user_company_instance: Callable[..., Any]) -> None:
     # Create company object that won't belong to current user
     await create_user_instance("notmyemail@examle.com")
     await create_company_instance()
@@ -319,6 +336,83 @@ async def test_update_company_permission(client: httpx.AsyncClient,
     await create_user_instance(DEFAULT_USER_DATA["email"])
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
 
-    server_response = await client.patch("/companies/1/update", data=json.dumps({"title": "title"}), headers={"Authorization": f"Bearer {token}"})
+    server_response = await client.patch("/companies/1/update/", data=json.dumps({"title": "title"}), headers={"Authorization": f"Bearer {token}"})
     assert server_response.status_code == 403
     assert server_response.json() == {"detail": {"error": "Forbidden"}}
+
+
+async def test_get_company_quizzes_empty(
+          client: httpx.AsyncClient,
+          create_auth_jwt: Callable[..., Any],
+          create_default_company_object: Callable[..., Any]) -> None:
+    # Instanciate test objects
+    await create_default_company_object()
+
+    token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
+    response = await client.get(
+        "/companies/1/quizzes/", headers={"Authorization": f"Bearer {token}"}
+    )
+
+    data = response.json()
+
+    assert response.status_code == 200
+    assert data == {"items": [], "total": 0, "page": 1, "size": 50, "pages": 0}
+
+
+async def test_get_company_quizzes(
+          client: httpx.AsyncClient,
+          create_auth_jwt: Callable[..., Any],
+          create_quiz_instance: Callable[..., Any],
+          create_default_company_object: Callable[..., Any]) -> None:
+    # Instanciate test objects
+    await create_default_company_object()
+    quiz = await create_quiz_instance()
+
+    token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
+    response = await client.get(
+        "/companies/1/quizzes/", headers={"Authorization": f"Bearer {token}"}
+    )
+
+    data = response.json()
+    quiz_data = data["items"][0]
+
+    assert response.status_code == 200
+    assert data["total"] == 1
+    assert quiz_data["id"] == 1
+    assert quiz_data["title"] == DEFAULT_QUIZ_DATA["title"]
+    assert quiz_data["description"] == DEFAULT_QUIZ_DATA["description"]
+    assert quiz_data["company_id"] == DEFAULT_QUIZ_DATA["company_id"]
+    assert quiz_data["fully_created"] == DEFAULT_QUIZ_DATA["fully_created"]
+
+
+@pytest.mark.parametrize(
+        "is_member",
+        (
+            (True,),
+            (False,), 
+        )
+)
+async def test_get_company_quizzes_403(
+          is_member: bool,
+          client: httpx.AsyncClient,
+          create_auth_jwt: Callable[..., Any],
+          create_user_instance: Callable[..., Any],
+          create_user_company_instance: Callable[..., Any],
+          create_default_company_object: Callable[..., Any]) -> None:
+    # Instanciate test objects
+    await create_default_company_object()
+    
+    # Non admin user
+    not_admin_email = "notadmin@email.com"
+    await create_user_instance(email=not_admin_email)
+
+    if is_member:
+        await create_user_company_instance(user_id=2, company_id=1, role=RoleEnum.Member)
+
+    token = await create_auth_jwt(not_admin_email)
+    response = await client.get(
+        "/companies/1/quizzes/", headers={"Authorization": f"Bearer {token}"}
+    )
+
+    assert response.status_code == 403
+    assert response.json() == {"detail": {"error": "Forbidden"}}

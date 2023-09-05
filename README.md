@@ -1,4 +1,4 @@
-# Fast api quizz app (internship project)
+# Fast api quiz app (internship project)
 
 # Tasks
 

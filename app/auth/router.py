@@ -11,6 +11,7 @@ from app.company_requests.services import CompanyRequestsRepository
 from app.database import get_async_session
 from app.schemas import UserFullSchema
 from app.users.services import UserRepository, error_handler
+from app.utils import get_current_user_id
 
 from .handlers import AuthHandler
 from .schemas import UserLogin, UserSignUp
@@ -24,7 +25,51 @@ auth_router = APIRouter(
 )
 
 
-@auth_router.post("/signup", response_model=Optional[Dict[str, Any]], status_code=201)
+@auth_router.get("/me/", response_model=Optional[UserFullSchema], response_model_exclude_none=True)
+async def get_current_user(session: AsyncSession = Depends(get_async_session),
+                           auth=Depends(auth_handler.auth_wrapper)) -> Optional[UserFullSchema]:
+    logger.info(f"Accessing current user info")
+    crud = UserRepository(session)
+
+    current_user = await crud.get_user_by_email(auth['email'])
+
+    logger.info(f"Successfully returned current user info")
+    return await UserFullSchema.from_model(current_user, public_request=False)
+
+
+@auth_router.get("/me/invitations/", response_model=Optional[List[UserInvitationSchema]], response_model_exclude_none=True)
+async def get_received_invitations(session: AsyncSession = Depends(get_async_session),
+                           auth=Depends(auth_handler.auth_wrapper)) -> Optional[List[UserInvitationSchema]]:
+    logger.info(f"Retrieving current user invitations list")
+
+    # Initialize services
+    request_crud = CompanyRequestsRepository(session)
+    
+    # Retrieving current user id
+    current_user_id = await get_current_user_id(session, auth)
+
+    res = await request_crud.get_received_requests(receiver_id=current_user_id)
+    logger.info(f"Successfully retrieved current user invitations list")
+    return res
+
+
+@auth_router.get("/me/requests/", response_model=Optional[List[UserRequestSchema]], response_model_exclude_none=True)
+async def get_sent_requests(session: AsyncSession = Depends(get_async_session),
+                           auth=Depends(auth_handler.auth_wrapper)) -> Optional[List[UserRequestSchema]]:
+    logger.info(f"Retrieving current user sent requests list")
+    
+    # Initialize services
+    request_crud = CompanyRequestsRepository(session)
+    
+    # Retrieving current user id
+    current_user_id = await get_current_user_id(session, auth)
+
+    res = await request_crud.get_sent_requests(sender_id=current_user_id)
+    logger.info(f"Successfully retrieved current user sent requests list")
+    return res
+
+
+@auth_router.post("/signup/", response_model=Optional[Dict[str, Any]], status_code=201)
 async def signup(user: UserSignUp, session: AsyncSession = Depends(get_async_session)) -> Optional[Dict[str, str]]:
     logger.info(f"Creating new User instance")
     crud = UserRepository(session)
@@ -37,7 +82,7 @@ async def signup(user: UserSignUp, session: AsyncSession = Depends(get_async_ses
     return result
 
 
-@auth_router.post("/login")
+@auth_router.post("/login/")
 async def login(user: UserLogin, session: AsyncSession = Depends(get_async_session)) -> Optional[Dict[str, str]]:
     logger.info(f"Login attemp with email \"{user.email}\"")
 
@@ -55,51 +100,3 @@ async def login(user: UserLogin, session: AsyncSession = Depends(get_async_sessi
     logger.info(f"User \"{user.email}\" successfully logged in the system")
     auth_token = await auth_handler.encode_token(user.email, session)
     return {"token": auth_token}
-
-
-@auth_router.get("/me", response_model=Optional[UserFullSchema], response_model_exclude_none=True)
-async def get_current_user(session: AsyncSession = Depends(get_async_session),
-                           auth=Depends(auth_handler.auth_wrapper)) -> Optional[UserFullSchema]:
-    logger.info(f"Accessing current user info")
-    crud = UserRepository(session)
-
-    current_user = await crud.get_user_by_email(auth['email'])
-
-    logger.info(f"Successfully returned current user info")
-    return await UserFullSchema.from_model(current_user, public_request=False)
-
-
-@auth_router.get("/me/invitations", response_model=Optional[List[UserInvitationSchema]], response_model_exclude_none=True)
-async def get_received_invitations(session: AsyncSession = Depends(get_async_session),
-                           auth=Depends(auth_handler.auth_wrapper)) -> Optional[List[UserInvitationSchema]]:
-    logger.info(f"Retrieving current user invitations list")
-
-    # Initialize services
-    request_crud = CompanyRequestsRepository(session)
-    user_crud = UserRepository(session)
-    
-    # Retrieving current user id
-    current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
-    user_id = auth.get("id") if not current_user else current_user.id
-
-    res = await request_crud.get_received_requests(receiver_id=user_id)
-    logger.info(f"Successfully retrieved current user invitations list")
-    return res
-
-
-@auth_router.get("/me/requests", response_model=Optional[List[UserRequestSchema]], response_model_exclude_none=True)
-async def get_sent_requests(session: AsyncSession = Depends(get_async_session),
-                           auth=Depends(auth_handler.auth_wrapper)) -> Optional[List[UserRequestSchema]]:
-    logger.info(f"Retrieving current user sent requests list")
-    
-    # Initialize services
-    request_crud = CompanyRequestsRepository(session)
-    user_crud = UserRepository(session)
-    
-    # Retrieving current user id
-    current_user = await user_crud.get_user_by_email(auth["email"]) if not auth.get("id") else None
-    user_id = auth.get("id") if not current_user else current_user.id
-
-    res = await request_crud.get_sent_requests(sender_id=user_id)
-    logger.info(f"Successfully retrieved current user sent requests list")
-    return res

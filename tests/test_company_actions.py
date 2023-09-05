@@ -1,10 +1,11 @@
-from typing import Callable, Any, Dict
+from typing import Any, Callable, Dict
 
-import pytest
 import httpx
+import pytest
 from pydantic import EmailStr
 
 from app.companies.models import RoleEnum
+
 from .conftest import DEFAULT_USER_DATA
 
 
@@ -33,7 +34,7 @@ async def test_send_invitation(
     await create_user_instance(email="user1@example.com", password="password123")
 
     token = await create_auth_jwt(auth_email)
-    response = await client.post("/companies/1/invite/2", headers={"Authorization": f"Bearer {token}"})
+    response = await client.post("/companies/1/invite/2/", headers={"Authorization": f"Bearer {token}"})
 
     data = response.json()
 
@@ -81,7 +82,7 @@ async def test_send_invitation_error(
             await create_user_company_instance(user_id=3, company_id=1, role=sender_role)
 
     token = await create_auth_jwt(auth_email)
-    server_response = await client.post(f"/companies/{company_id}/invite/{user_id}", headers={"Authorization": f"Bearer {token}"})
+    server_response = await client.post(f"/companies/{company_id}/invite/{user_id}/", headers={"Authorization": f"Bearer {token}"})
     response_data = server_response.json()
 
     assert server_response.status_code == status_code
@@ -105,7 +106,7 @@ async def test_send_invitation_with_received_request(
     await create_company_request_instance(sender_id=2, company_id=1)
 
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
-    server_response = await client.post(f"/companies/1/invite/2", headers={"Authorization": f"Bearer {token}"})
+    server_response = await client.post(f"/companies/1/invite/2/", headers={"Authorization": f"Bearer {token}"})
     response_data = server_response.json()
 
     assert server_response.status_code == 400
@@ -140,7 +141,7 @@ async def test_kick_user(
     await create_user_company_instance(user_id=2, company_id=1, role=user_to_kick_role)
 
     token = await create_auth_jwt(auth_email)
-    response = await client.delete("/companies/1/kick/2", headers={"Authorization": f"Bearer {token}"})
+    response = await client.delete("/companies/1/kick/2/", headers={"Authorization": f"Bearer {token}"})
 
     data = response.json()
 
@@ -185,7 +186,7 @@ async def test_kick_user_error(
         await create_user_company_instance(user_id=2, company_id=1, role=user_to_kick_role)
 
     token = await create_auth_jwt(auth_email)
-    server_response = await client.delete(f"/companies/{company_id}/kick/{user_id}", headers={"Authorization": f"Bearer {token}"})
+    server_response = await client.delete(f"/companies/{company_id}/kick/{user_id}/", headers={"Authorization": f"Bearer {token}"})
 
     data = server_response.json()
 
@@ -197,14 +198,11 @@ async def test_get_company_requests(
           client: httpx.AsyncClient,
           create_auth_jwt: Callable[..., Any],
           create_user_instance: Callable[..., Any],
-          create_company_instance: Callable[..., Any],
-          create_user_company_instance: Callable[..., Any],
+          create_default_company_object: Callable[..., Any],
           create_company_request_instance: Callable[..., Any]) -> None:
     # Instanciate test objects
     # Receiver objects
-    await create_user_instance(DEFAULT_USER_DATA["email"])
-    await create_company_instance()
-    await create_user_company_instance()
+    await create_default_company_object()
 
     # Sender object
     sender_user = await create_user_instance(email="user1@example.com", password="password123")
@@ -213,7 +211,7 @@ async def test_get_company_requests(
     await create_company_request_instance(sender_id=2, company_id=1)
 
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
-    server_response = await client.get(f"/companies/1/requests", headers={"Authorization": f"Bearer {token}"})
+    server_response = await client.get(f"/companies/1/requests/", headers={"Authorization": f"Bearer {token}"})
 
     data = server_response.json()[0]
 
@@ -251,7 +249,7 @@ async def test_get_company_requests_error(
     await create_user_company_instance(role=receiver_role)
 
     token = await create_auth_jwt(auth_email)
-    server_response = await client.get(f"/companies/{company_id}/requests", headers={"Authorization": f"Bearer {token}"})
+    server_response = await client.get(f"/companies/{company_id}/requests/", headers={"Authorization": f"Bearer {token}"})
 
     assert server_response.status_code == status_code
     assert server_response.json() == response
@@ -261,14 +259,11 @@ async def test_get_company_invitations(
           client: httpx.AsyncClient,
           create_auth_jwt: Callable[..., Any],
           create_user_instance: Callable[..., Any],
-          create_company_instance: Callable[..., Any],
-          create_user_company_instance: Callable[..., Any],
+          create_default_company_object: Callable[..., Any],
           create_company_request_instance: Callable[..., Any]) -> None:
     # Instanciate test objects
     # Receiver object
-    await create_user_instance(DEFAULT_USER_DATA["email"])
-    await create_company_instance()
-    await create_user_company_instance()
+    await create_default_company_object()
 
     # Invited object
     invited_user = await create_user_instance(email="user1@example.com", password="password123")
@@ -277,7 +272,7 @@ async def test_get_company_invitations(
     await create_company_request_instance(receiver_id=2, company_id=1)
 
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
-    server_response = await client.get(f"/companies/1/invitations", headers={"Authorization": f"Bearer {token}"})
+    server_response = await client.get(f"/companies/1/invitations/", headers={"Authorization": f"Bearer {token}"})
     data = server_response.json()[0]
     
 
@@ -315,7 +310,7 @@ async def test_get_company_invitations_error(
     await create_user_company_instance(role=receiver_role)
 
     token = await create_auth_jwt(auth_email)
-    server_response = await client.get(f"/companies/{company_id}/invitations", headers={"Authorization": f"Bearer {token}"})
+    server_response = await client.get(f"/companies/{company_id}/invitations/", headers={"Authorization": f"Bearer {token}"})
 
     assert server_response.status_code == status_code
     assert server_response.json() == response
@@ -334,7 +329,7 @@ async def test_get_admins_list(
     await create_user_company_instance(role=RoleEnum.Admin)
 
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
-    server_response = await client.get("/companies/1/admins", headers={"Authorization": f"Bearer {token}"})
+    server_response = await client.get("/companies/1/admins/", headers={"Authorization": f"Bearer {token}"})
 
     data = server_response.json()[0]
 
@@ -371,7 +366,7 @@ async def test_get_admins_list_error(
     await create_user_company_instance(role=receiver_role)
 
     token = await create_auth_jwt(auth_email)
-    server_response = await client.get(f"/companies/{company_id}/invitations", headers={"Authorization": f"Bearer {token}"})
+    server_response = await client.get(f"/companies/{company_id}/invitations/", headers={"Authorization": f"Bearer {token}"})
 
     assert server_response.status_code == status_code
     assert server_response.json() == response
@@ -381,20 +376,18 @@ async def test_give_admin_role(
           client: httpx.AsyncClient,
           create_auth_jwt: Callable[..., Any],
           create_user_instance: Callable[..., Any],
-          create_company_instance: Callable[..., Any],
-          create_user_company_instance: Callable[..., Any]) -> None:
+          create_user_company_instance: Callable[..., Any],
+          create_default_company_object: Callable[..., Any]) -> None:
     # Instanciate test objects
     # Executor objects
-    await create_user_instance(DEFAULT_USER_DATA["email"])
-    await create_company_instance()
-    await create_user_company_instance()
+    await create_default_company_object()
 
     # Member objects
     await create_user_instance(email="user1@example.com", password="password123")
     await create_user_company_instance(user_id=2, company_id=1, role=RoleEnum.Member)
 
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
-    response = await client.post("/companies/1/set-admin/2", headers={"Authorization": f"Bearer {token}"})
+    response = await client.post("/companies/1/set-admin/2/", headers={"Authorization": f"Bearer {token}"})
 
     data = response.json()
 
@@ -439,7 +432,7 @@ async def test_give_admin_role_error(
         await create_user_company_instance(user_id=2, company_id=1, role=member_role)
 
     token = await create_auth_jwt(auth_email)
-    server_response = await client.post(f"/companies/{company_id}/set-admin/{member_id}", headers={"Authorization": f"Bearer {token}"})
+    server_response = await client.post(f"/companies/{company_id}/set-admin/{member_id}/", headers={"Authorization": f"Bearer {token}"})
 
     data = server_response.json()
 
@@ -451,20 +444,18 @@ async def test_take_admin_role(
           client: httpx.AsyncClient,
           create_auth_jwt: Callable[..., Any],
           create_user_instance: Callable[..., Any],
-          create_company_instance: Callable[..., Any],
-          create_user_company_instance: Callable[..., Any]) -> None:
+          create_user_company_instance: Callable[..., Any],
+          create_default_company_object: Callable[..., Any]) -> None:
     # Instanciate test objects
     # Executor objects
-    await create_user_instance(DEFAULT_USER_DATA["email"])
-    await create_company_instance()
-    await create_user_company_instance()
+    await create_default_company_object()
 
     # Admin objects
     await create_user_instance(email="user1@example.com", password="password123")
     await create_user_company_instance(user_id=2, company_id=1, role=RoleEnum.Admin)
 
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
-    response = await client.post("/companies/1/unset-admin/2", headers={"Authorization": f"Bearer {token}"})
+    response = await client.post("/companies/1/unset-admin/2/", headers={"Authorization": f"Bearer {token}"})
 
     data = response.json()
 
@@ -509,7 +500,7 @@ async def test_take_admin_role_error(
         await create_user_company_instance(user_id=2, company_id=1, role=admin_role)
 
     token = await create_auth_jwt(auth_email)
-    server_response = await client.post(f"/companies/{company_id}/unset-admin/{admin_id}", headers={"Authorization": f"Bearer {token}"})
+    server_response = await client.post(f"/companies/{company_id}/unset-admin/{admin_id}/", headers={"Authorization": f"Bearer {token}"})
 
     data = server_response.json()
 
@@ -530,7 +521,7 @@ async def test_leave_company(
     await create_user_company_instance(role=RoleEnum.Member)
 
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
-    server_response = await client.delete(f"/companies/1/leave", headers={"Authorization": f"Bearer {token}"})
+    server_response = await client.delete(f"/companies/1/leave/", headers={"Authorization": f"Bearer {token}"})
 
     assert server_response.status_code == 200
     assert server_response.json() == {"response": "You have successfully left company 1"}
@@ -562,7 +553,7 @@ async def test_leave_company_error(
         await create_user_company_instance(role=user_role)
 
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
-    server_response = await client.delete(f"/companies/{company_id}/leave", headers={"Authorization": f"Bearer {token}"})
+    server_response = await client.delete(f"/companies/{company_id}/leave/", headers={"Authorization": f"Bearer {token}"})
 
     assert server_response.status_code == status_code
     assert server_response.json() == response
@@ -572,14 +563,11 @@ async def test_accept_user_request(
           client: httpx.AsyncClient,
           create_auth_jwt: Callable[..., Any],
           create_user_instance: Callable[..., Any],
-          create_company_instance: Callable[..., Any],
-          create_user_company_instance: Callable[..., Any],
+          create_default_company_object: Callable[..., Any],
           create_company_request_instance: Callable[..., Any]) -> None:
     # Instanciate test objects
     # Receiver objects
-    await create_user_instance(DEFAULT_USER_DATA["email"])
-    await create_company_instance()
-    await create_user_company_instance()
+    await create_default_company_object()
 
     # Sender objects
     await create_user_instance("sender@example.com")
@@ -588,7 +576,7 @@ async def test_accept_user_request(
     await create_company_request_instance(sender_id=2, company_id=1)
 
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
-    server_response = await client.post(f"/requests/1/accept", headers={"Authorization": f"Bearer {token}"})
+    server_response = await client.post(f"/requests/1/accept/", headers={"Authorization": f"Bearer {token}"})
 
     assert server_response.status_code == 200
     assert server_response.json() == {"response": "Membership request was successfully accepted"}
@@ -625,7 +613,7 @@ async def test_accept_user_request_error(
     await create_company_request_instance(sender_id=2, company_id=1)
 
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
-    server_response = await client.post(f"/requests/{request_id}/accept", headers={"Authorization": f"Bearer {token}"})
+    server_response = await client.post(f"/requests/{request_id}/accept/", headers={"Authorization": f"Bearer {token}"})
 
     assert server_response.status_code == status_code
     assert server_response.json() == response
@@ -635,14 +623,11 @@ async def test_decline_request(
           client: httpx.AsyncClient,
           create_auth_jwt: Callable[..., Any],
           create_user_instance: Callable[..., Any],
-          create_company_instance: Callable[..., Any],
-          create_user_company_instance: Callable[..., Any],
+          create_default_company_object: Callable[..., Any],
           create_company_request_instance: Callable[..., Any]) -> None:
     # Instanciate test objects
     # Receiver objects
-    await create_user_instance(DEFAULT_USER_DATA["email"])
-    await create_company_instance()
-    await create_user_company_instance()
+    await create_default_company_object()
 
     # Sender objects
     await create_user_instance("sender@example.com")
@@ -651,7 +636,7 @@ async def test_decline_request(
     await create_company_request_instance(sender_id=2, company_id=1)
 
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
-    server_response = await client.delete(f"/requests/1/decline", headers={"Authorization": f"Bearer {token}"})
+    server_response = await client.delete(f"/requests/1/decline/", headers={"Authorization": f"Bearer {token}"})
 
     assert server_response.status_code == 200
     assert server_response.json() == {"response": "Membership request was successfully declined"}
@@ -688,7 +673,7 @@ async def test_decline_request_error(
     await create_company_request_instance(sender_id=2, company_id=1)
 
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
-    server_response = await client.delete(f"/requests/{request_id}/decline", headers={"Authorization": f"Bearer {token}"})
+    server_response = await client.delete(f"/requests/{request_id}/decline/", headers={"Authorization": f"Bearer {token}"})
 
     assert server_response.status_code == status_code
     assert server_response.json() == response
@@ -698,14 +683,11 @@ async def test_cancel_sent_invitation(
           client: httpx.AsyncClient,
           create_auth_jwt: Callable[..., Any],
           create_user_instance: Callable[..., Any],
-          create_company_instance: Callable[..., Any],
-          create_user_company_instance: Callable[..., Any],
+          create_default_company_object: Callable[..., Any],
           create_company_request_instance: Callable[..., Any]) -> None:
     # Instanciate test objects
     # Sender objects
-    await create_user_instance(DEFAULT_USER_DATA["email"])
-    await create_company_instance()
-    await create_user_company_instance()
+    await create_default_company_object()
 
     # Receiver objects
     await create_user_instance("receiver@example.com")
@@ -714,7 +696,7 @@ async def test_cancel_sent_invitation(
     await create_company_request_instance(receiver_id=2, company_id=1)
 
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
-    server_response = await client.delete(f"/invitations/1/cancel", headers={"Authorization": f"Bearer {token}"})
+    server_response = await client.delete(f"/invitations/1/cancel/", headers={"Authorization": f"Bearer {token}"})
 
     assert server_response.status_code == 200
     assert server_response.json() == {"response": "Invitation was successfully canceled"}
@@ -751,7 +733,7 @@ async def test_cancel_sent_invitation_error(
     await create_company_request_instance(receiver_id=2, company_id=1)
 
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
-    server_response = await client.delete(f"/invitations/{request_id}/cancel", headers={"Authorization": f"Bearer {token}"})
+    server_response = await client.delete(f"/invitations/{request_id}/cancel/", headers={"Authorization": f"Bearer {token}"})
 
     assert server_response.status_code == status_code
     assert server_response.json() == response
