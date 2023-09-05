@@ -200,8 +200,8 @@ async def test_update_user(
     (
         ({"name": "1231jnkdskjas"}, 400, {"detail": "Name should contain only english letters"}),
         ({"password": "short"}, 400, {"detail": "Password should contain at least eight characters, at least one letter and one number"}),
-        ({"email": "anotheremail@gmail.com"}, 400, {"detail": "User email can't be changed, try again"}),
-        ({}, 400, {"detail": {"error": "At least one parameter should be provided for user update query"}}),
+        ({"email":"anotheremail@gmail.com"}, 400, {"detail": "User email can't be changed, try again"}),
+        ({}, 400, {"detail": {"error": "At least one valid parameter (name, email, password) should be provided for user update query"}}),
     )
 )
 async def test_update_user_validation(

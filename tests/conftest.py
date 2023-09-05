@@ -94,7 +94,7 @@ async def prepare_database() -> None:
 
 
 @pytest.fixture(scope="session")
-async def async_session_test():
+async def async_session_test() -> AsyncSession:
     engine = create_async_engine(DATABASE_URL, echo=True)
     async_session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     yield async_session
@@ -271,6 +271,24 @@ async def create_quiz_instance(async_session_test) -> Callable[[int], Awaitable[
 
     return create_quiz_instance
 
+@pytest.fixture
+async def create_default_quiz_instance(
+          create_default_company_object,
+          create_quiz_instance)-> Callable[[int], Awaitable[Quiz]]:
+    async def create_default_quiz_instance() -> Quiz:
+        await create_default_company_object()
+        quiz = await create_quiz_instance()
+        return quiz
+    return create_default_quiz_instance
+
+@pytest.fixture
+async def get_quiz_by_id(async_session_test) -> Callable[[int], Awaitable[Quiz]]:
+    async def get_quiz_by_id(quiz_id: int) -> Quiz:
+        async with async_session_test() as session:
+            result = await session.execute(select(Quiz).where(Quiz.id == quiz_id))
+            question = result.unique().scalar_one_or_none()
+            return question
+    return get_quiz_by_id
 
 @pytest.fixture(scope="function")
 async def create_question_instance(async_session_test) -> Callable[[int], Awaitable[Question]]:
@@ -287,6 +305,24 @@ async def create_question_instance(async_session_test) -> Callable[[int], Awaita
 
     return create_question_instance
 
+@pytest.fixture 
+async def create_default_question_instance(
+          create_default_quiz_instance,
+          create_question_instance) -> Callable[[int], Awaitable[Question]]:
+    async def create_default_question_instance() -> Question:
+        await create_default_quiz_instance()
+        question = await create_question_instance()
+        return question
+    return create_default_question_instance
+
+@pytest.fixture
+async def get_question_by_id(async_session_test) -> Callable[[str], Awaitable[Question]]:
+    async def get_question_by_id(question_id: int) -> Question:
+        async with async_session_test() as session:
+            result = await session.execute(select(Question).where(Question.id == question_id))
+            question = result.unique().scalar_one_or_none()
+            return question
+    return get_question_by_id
 
 @pytest.fixture(scope="function")
 async def create_answer_instance(async_session_test) -> Callable[[int], Awaitable[Answer]]:
@@ -302,6 +338,16 @@ async def create_answer_instance(async_session_test) -> Callable[[int], Awaitabl
             return answer
 
     return create_answer_instance
+
+@pytest.fixture 
+async def create_default_answer_instance(
+          create_default_question_instance,
+          create_answer_instance) -> Callable[[int], Awaitable[Question]]:
+    async def create_default_answer_instance() -> Question:
+        await create_default_question_instance()
+        answer = await create_answer_instance()
+        return answer
+    return create_default_answer_instance
 
 
 @pytest.fixture(scope="function")

@@ -305,6 +305,7 @@ async def test_company_duplicate(
     (
         ({"title": "NewCompanyTitle"}, 200),
         ({"title": "dsfdss?"}, 400),
+        ({}, 400),
     )
 )
 async def test_update_company(
