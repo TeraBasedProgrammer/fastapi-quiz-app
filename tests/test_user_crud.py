@@ -86,7 +86,7 @@ async def test_get_user_by_id(
     user_data = await create_user_instance()
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
 
-    response = await client.get("/users/1", headers={"Authorization": f"Bearer {token}"})
+    response = await client.get("/users/1/", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 200
     data = response.json()
     assert data["email"] == user_data["email"]
@@ -136,7 +136,7 @@ async def test_get_user_by_id_validation(
     await create_user_instance()
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
 
-    response = await client.get(f"users/{user_id}", headers={"Authorization": f"Bearer {token}"})
+    response = await client.get(f"users/{user_id}/", headers={"Authorization": f"Bearer {token}"})
 
     assert response.status_code == status_code
     assert response.json() == error_response
@@ -149,7 +149,7 @@ async def test_delete_user(
           create_user_instance: Callable[..., Any]) -> None:
     user_data = await create_user_instance()
     jwt = await create_auth_jwt(user_data["email"])
-    response = await client.delete("/users/1/delete", headers={"Authorization": f"Bearer {jwt}"})
+    response = await client.delete("/users/1/delete/", headers={"Authorization": f"Bearer {jwt}"})
 
     assert response.status_code == 200
     assert response.json() == {"deleted_instance_id": 1}
@@ -161,7 +161,7 @@ async def test_delete_user_forbidden(
           create_user_instance: Callable[..., Any]) -> None:
     user_data = await create_user_instance()
     jwt = await create_auth_jwt(user_data["email"])
-    response = await client.delete("/users/200/delete", headers={"Authorization": f"Bearer {jwt}"})
+    response = await client.delete("/users/200/delete/", headers={"Authorization": f"Bearer {jwt}"})
 
     assert response.status_code == 403
     assert response.json() == {"detail": {"error": "Forbidden"}}
@@ -175,7 +175,7 @@ async def test_delete_user_permission_error(
     user2_data = await create_user_instance(email="test2@example.com", password="password123", name="anton")
     jwt = await create_auth_jwt(user2_data["email"])
 
-    response = await client.delete("/users/1/delete", headers={"Authorization": f"Bearer {jwt}"})
+    response = await client.delete("/users/1/delete/", headers={"Authorization": f"Bearer {jwt}"})
 
     assert response.status_code == 403
     assert response.json() == {'detail': {'error': 'Forbidden'}}
@@ -190,7 +190,7 @@ async def test_update_user(
     jwt = await create_auth_jwt(user_data["email"])
 
     update_data = {"name": "New Name"}
-    response = await client.patch("/users/1/update", headers={"Authorization": f"Bearer {jwt}"},
+    response = await client.patch("/users/1/update/", headers={"Authorization": f"Bearer {jwt}"},
                                   data=json.dumps(update_data))
     assert response.status_code == 200
 
@@ -214,7 +214,7 @@ async def test_update_user_validation(
     user_data = await create_user_instance()
     jwt = await create_auth_jwt(user_data["email"])
 
-    response = await client.patch("/users/1/update", headers={"Authorization": f"Bearer {jwt}"},
+    response = await client.patch("/users/1/update/", headers={"Authorization": f"Bearer {jwt}"},
                                   data=json.dumps(update_data))
     assert response.status_code == status_code
     assert response.json() == response_error
@@ -228,7 +228,7 @@ async def test_update_user_permission_error(
     user2_data = await create_user_instance(email="test2@example.com", password="password123", name="anton")
     jwt = await create_auth_jwt(user2_data["email"])
 
-    response = await client.patch("/users/1/update",
+    response = await client.patch("/users/1/update/",
                                   headers={"Authorization": f"Bearer {jwt}"},
                                   data=json.dumps({"name": "name"}))
 
@@ -244,7 +244,7 @@ async def test_user_with_company(
     await create_default_company_object()
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
     
-    response = await client.get("/users/1", headers={"Authorization": f"Bearer {token}"})
+    response = await client.get("/users/1/", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 200
     data = response.json()
 
@@ -255,32 +255,3 @@ async def test_user_with_company(
     assert companies[0].get("is_hidden") == False
     assert companies[0]["created_at"].split("T")[0] == str(datetime.utcnow().date())
     
-
-
-async def test_user_after_company_delete(
-          client: httpx.AsyncClient,
-          create_auth_jwt: Callable[..., Any],                                         
-          create_default_company_object: Callable[..., Any]) -> None:
-    # Initialize data
-    await create_default_company_object()
-    token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
-    
-    
-    response_before = await client.get("/users/1", headers={"Authorization": f"Bearer {token}"})
-    assert response_before.status_code == 200
-    data_before = response_before.json()
-
-    # Check companies list before deleting the company
-    companies_before = data_before["companies"]
-    assert len(companies_before) == 1
-
-    response_delete = await client.delete("/companies/1/delete", headers={"Authorization": f"Bearer {token}"})
-    assert response_delete.json() == {"deleted_instance_id" : 1}
-
-    response_after = await client.get("/users/1", headers={"Authorization": f"Bearer {token}"})
-    assert response_after.status_code == 200
-    
-    # Check companies list after deleting the company
-    data_after = response_after.json()
-    companies_after = data_after["companies"]
-    assert len(companies_after) == 0

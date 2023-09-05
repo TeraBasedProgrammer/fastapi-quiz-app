@@ -22,7 +22,7 @@ async def test_signup(
           user_data: dict[str, Any],
           get_user_by_id: Callable[..., Any]) -> None:
     auth = AuthHandler()
-    response = await client.post("/signup", data=json.dumps(user_data))
+    response = await client.post("/signup/", data=json.dumps(user_data))
     assert response.status_code == 201
 
     # Check if user was inserted into the database
@@ -93,7 +93,7 @@ async def test_signup_validation_error(
           client: httpx.AsyncClient,
           user_data: dict[str, Any],
           error_message: dict[str | Any]) -> None:
-    response = await client.post("/signup", data=json.dumps(user_data))
+    response = await client.post("/signup/", data=json.dumps(user_data))
     assert response.status_code == status_code
 
     data = response.json()
@@ -111,7 +111,7 @@ async def test_signup_duplicate(
 
     await create_raw_user(**user_data)
 
-    duplicate_response = await client.post("/signup", data=json.dumps(user_data))
+    duplicate_response = await client.post("/signup/", data=json.dumps(user_data))
     assert duplicate_response.status_code == 400
     assert duplicate_response.json() == {"detail": {"error": "User with this email already exists"}}
 
@@ -126,7 +126,7 @@ async def test_login(
         "password": "password123"
     }
 
-    response = await client.post("/login", data=json.dumps(creds))
+    response = await client.post("/login/", data=json.dumps(creds))
     assert response.status_code == 200
     assert response.json().get("token") is not None
 
@@ -150,7 +150,7 @@ async def test_login_validation_error(
           error_response: dict[str, Any],
           create_user_instance: Callable[..., Any]) -> None:
     await create_user_instance()
-    response = await client.post("/login", data=json.dumps(user_data))
+    response = await client.post("/login/", data=json.dumps(user_data))
     assert response.status_code == 400
     assert response.json() == error_response
 
@@ -162,7 +162,7 @@ async def test_me(
           create_user_instance: Callable[..., Any]) -> None:
     user_data = await create_user_instance()
     jwt = await create_auth_jwt(user_data["email"])
-    response = await client.get("/me", headers={"Authorization": f"Bearer {jwt}"})
+    response = await client.get("/me/", headers={"Authorization": f"Bearer {jwt}"})
 
     assert response.status_code == 200
     data = response.json()
@@ -174,7 +174,7 @@ async def test_me(
 
 
 async def test_me_unauthorized(client: httpx.AsyncClient) -> None:
-    response = await client.get("/me")
+    response = await client.get("/me/")
 
     assert response.status_code == 403
     assert response.json() == {"detail": "Not authenticated"}
@@ -182,7 +182,7 @@ async def test_me_unauthorized(client: httpx.AsyncClient) -> None:
 
 async def test_me_invalid_token(client: httpx.AsyncClient) -> None:
     definitely_invalid_jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2OTAxMzMwODYsImlhdCI6MTY5MDEzMjQ4Niwic3ViIjoidGVzdEBlbWFpbC5jb20ifQ.L8GJcdh6z94AqUktGylGid_ir0cVB721dbAq4lLYkkkU"
-    response = await client.get("/me", headers={"Authorization": f"Bearer {definitely_invalid_jwt}"})
+    response = await client.get("/me/", headers={"Authorization": f"Bearer {definitely_invalid_jwt}"})
 
     assert response.status_code == 401
     assert response.json() == {"detail": "Invalid token payload"}
@@ -190,7 +190,7 @@ async def test_me_invalid_token(client: httpx.AsyncClient) -> None:
 
 async def test_me_expired_token(client: httpx.AsyncClient) -> None:
     expired_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2OTAxMzQyMzUsImlhdCI6MTY5MDEzNDIzNCwic3ViIjoidGVzdEBlbWFpbC5jb20ifQ.ICZzWnQDrfRPhkx1Utj5hbqSGQD6xJfW4bzK0jDt9j8"
-    response = await client.get("/me", headers={"Authorization": f"Bearer {expired_token}"})
+    response = await client.get("/me/", headers={"Authorization": f"Bearer {expired_token}"})
 
     assert response.status_code == 401
     assert response.json() == {'detail': 'Signature has expired'}

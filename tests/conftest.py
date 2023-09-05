@@ -19,6 +19,7 @@ from app.company_requests.models import CompanyRequest
 from app.config import settings
 from app.database import Base, get_async_session
 from app.main import app
+from app.quizzes.models import Answer, Question, Quiz
 from app.users.models import User
 
 # Activate venv
@@ -33,6 +34,9 @@ DB_TABLES: Dict[str, Optional[str]] = {
     "companies": "companies_id_seq",
     "company_user": None,
     "company_request": "company_request_id_seq",
+    "quizzes": "quizzes_id_seq",
+    "questions": "questions_id_seq",
+    "answers": "answers_id_seq",
 }
 
 DEFAULT_USER_DATA = {
@@ -47,6 +51,28 @@ DEFAULT_COMPANY_DATA = {
     "title": "MyCompany",
     "description": "Description",
     "is_hidden": False
+}
+
+DEFAULT_QUIZ_DATA = {
+    "id": 1,
+    "title": "Quiz",
+    "description": "Description",
+    "company_id": 1,
+    "fully_created": False
+}
+
+DEFAULT_QUESTION_DATA = {
+    "id": 1,
+    "title": "Question",
+    "quiz_id": 1,
+    "fully_created": False
+}
+
+DEFAULT_ANSWER_DATA = {
+    "id": 1,
+    "title": "Answer",
+    "question_id": 1,
+    "is_correct": False
 }
 
 
@@ -226,6 +252,56 @@ async def get_request_by_id(async_session_test) -> Callable[[int], Awaitable[Com
             request = await session.execute(select(CompanyRequest).where(CompanyRequest.id == request_id))
             return request.scalar_one_or_none()
     return get_request_by_id
+
+
+@pytest.fixture(scope="function")
+async def create_quiz_instance(async_session_test) -> Callable[[int], Awaitable[Quiz]]:
+    async def create_quiz_instance(title: str = DEFAULT_QUIZ_DATA["title"], 
+                                    description: str = DEFAULT_QUIZ_DATA["description"],
+                                    company_id: int = DEFAULT_QUIZ_DATA["company_id"], 
+                                    fully_created: bool = DEFAULT_QUIZ_DATA["fully_created"]) -> Quiz:
+        async with async_session_test() as session:
+            quiz = Quiz(title=title, 
+                        description=description, 
+                        company_id=company_id, 
+                        fully_created=fully_created)
+            session.add(quiz)
+            await session.commit()
+            return quiz
+
+    return create_quiz_instance
+
+
+@pytest.fixture(scope="function")
+async def create_question_instance(async_session_test) -> Callable[[int], Awaitable[Question]]:
+    async def create_question_instance(title: str = DEFAULT_QUESTION_DATA["title"], 
+                                       quiz_id: int = DEFAULT_QUESTION_DATA["quiz_id"], 
+                                       fully_created: bool = DEFAULT_QUESTION_DATA["fully_created"]) -> Question:
+        async with async_session_test() as session:
+            question = Question(title=title, 
+                               quiz_id=quiz_id,
+                               fully_created=fully_created)
+            session.add(question)
+            await session.commit()
+            return question
+
+    return create_question_instance
+
+
+@pytest.fixture(scope="function")
+async def create_answer_instance(async_session_test) -> Callable[[int], Awaitable[Answer]]:
+    async def create_answer_instance(title: str = DEFAULT_ANSWER_DATA["title"], 
+                                     question_id: int = DEFAULT_ANSWER_DATA["question_id"], 
+                                     is_correct: bool = DEFAULT_ANSWER_DATA["is_correct"]) -> Answer:
+        async with async_session_test() as session:
+            answer = Answer(title=title, 
+                            question_id=question_id,
+                            is_correct=is_correct)
+            session.add(answer)
+            await session.commit()
+            return answer
+
+    return create_answer_instance
 
 
 @pytest.fixture(scope="function")
