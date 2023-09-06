@@ -12,7 +12,7 @@ from app.company_requests.schemas import (CompanyInvitationSchema,
                                           CompanyRequestSchema)
 from app.company_requests.services import CompanyRequestsRepository
 from app.database import get_async_session
-from app.quizzes.schemas import QuizSchema
+from app.quizzes.schemas import QuizListSchema
 from app.quizzes.services import QuizRepository
 from app.schemas import CompanyFullSchema
 from app.users.schemas import DeletedInstanceResponse, UserSchema
@@ -65,21 +65,21 @@ async def get_company(company_id: int,
     return await CompanyFullSchema.from_model(company, single_company_request=True)
 
 
-@company_router.get("/{company_id}/quizzes/", response_model=Page[QuizSchema])
+@company_router.get("/{company_id}/quizzes/", response_model=Page[QuizListSchema])
 async def get_quizzes(company_id: int,
                       params: Params = Depends(),
                       session: AsyncSession = Depends(get_async_session),
-                      auth=Depends(auth_handler.auth_wrapper)) -> Page[QuizSchema]:
+                      auth=Depends(auth_handler.auth_wrapper)) -> Page[QuizListSchema]:
     # Initialize services
     quiz_crud = QuizRepository(session)
     company_crud = CompanyRepository(session)
 
     # Validate if requested instances exist
-    request_company = await company_crud.get_company_by_id(company_id, auth["email"], admin_only=True)
+    request_company = await company_crud.get_company_by_id(company_id, auth["email"], member_only=True)
     if not request_company:
         logger.warning(f"Company \"{company_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested company is not found"))
-
+    
     return paginate(await quiz_crud.get_company_quizzes(company_id=company_id), params)
 
 

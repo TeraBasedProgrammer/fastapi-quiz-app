@@ -13,9 +13,17 @@ class Quiz(Base):
     description = Column(Text, nullable=False)
     company_id = Column(ForeignKey("companies.id", ondelete="CASCADE"))
     fully_created = Column(Boolean, nullable=False, default=False)
+    
+    # Quiz completion time (in minutes)
+    completion_time = Column(Integer, nullable=False)
     # daily_attemps - ?
 
     questions = relationship("Question", back_populates="quiz", lazy='joined') 
+
+    @property
+    def questions_count(self) -> int:
+        return len(self.questions)
+    
 
     __table_args__ = (
          UniqueConstraint("title", "company_id", name="_quiz_uc"),

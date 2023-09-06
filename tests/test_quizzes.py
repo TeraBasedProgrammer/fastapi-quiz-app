@@ -53,8 +53,8 @@ async def test_get_quiz_by_id_404(
 @pytest.mark.parametrize(
         "is_member",
         (
-            (True,),
-            (False,), 
+            True,
+            False, 
         )
 )
 async def test_get_quiz_by_id_403(
@@ -94,7 +94,8 @@ async def test_create_quiz(
     quiz_data = {
         "title": DEFAULT_QUIZ_DATA["title"],
         "description": DEFAULT_QUIZ_DATA["description"],
-        "company_id": DEFAULT_QUIZ_DATA["company_id"]
+        "company_id": DEFAULT_QUIZ_DATA["company_id"],
+        "completion_time": DEFAULT_QUIZ_DATA["completion_time"]
     }
     server_response = await client.post("/quizzes/", data=json.dumps(quiz_data), headers={"Authorization": f"Bearer {token}"})
     assert server_response.status_code == 200
@@ -104,6 +105,7 @@ async def test_create_quiz(
     assert quiz_data["title"] == quiz_data["title"]
     assert quiz_data["description"] == quiz_data["description"]
     assert quiz_data["company_id"] == quiz_data["company_id"]
+    assert quiz_data["completion_time"] == quiz_data["completion_time"]
     assert quiz_data["fully_created"] == False
 
 
@@ -112,7 +114,7 @@ async def test_create_quiz(
     (
         (
             DEFAULT_USER_DATA["email"],
-            {"title": "Quiz?", "description": "Quiz", "company_id": 1},
+            {"title": "Quiz?", "description": "Quiz", "company_id": 1, "completion_time": 15},
             400,
             {"detail": "Title may contain only english letters, numbers and special characters (.-'!()/ )"}
         ), 
@@ -143,19 +145,26 @@ async def test_create_quiz(
                         "msg": "Field required",
                         "type": "missing",
                         "url": "https://errors.pydantic.dev/2.1.2/v/missing"
+                    },
+                    {
+                        "input": {},
+                        "loc": ["body","completion_time"],
+                        "msg": "Field required",
+                        "type": "missing",
+                        "url": "https://errors.pydantic.dev/2.1.2/v/missing"
                     }
                 ],
             }
         ), 
         (
             DEFAULT_USER_DATA["email"],
-            {"title": "Quiz", "description": "Quiz", "company_id": 150},
+            {"title": "Quiz", "description": "Quiz", "company_id": 150, "completion_time": 15},
             404,
             {"detail": {"error": "Company with id 150 is not found"}}
         ), 
         (
             "not_admin@example.com",
-            {"title": "Quiz", "description": "Quiz", "company_id": 1},
+            {"title": "Quiz", "description": "Quiz", "company_id": 1, "completion_time": 15},
             403,
             {"detail": {"error": "Forbidden"}}
         ), 
@@ -210,7 +219,8 @@ async def test_create_duplicate_quiz(
     quiz_data = {
         "title": DEFAULT_QUIZ_DATA["title"],
         "description": DEFAULT_QUIZ_DATA["description"],
-        "company_id": company_id
+        "company_id": company_id,
+        "completion_time": DEFAULT_QUIZ_DATA["completion_time"]
     }
     server_response = await client.post("/quizzes/", data=json.dumps(quiz_data), headers={"Authorization": f"Bearer {token}"})
     assert server_response.status_code == status_code

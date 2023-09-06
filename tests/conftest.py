@@ -27,7 +27,7 @@ read_dotenv(os.path.join(Path(__file__).resolve().parent.parent, '.env'))
 
 Jwt: TypeAlias = str
 
-DATABASE_URL: str = settings.test_database_url
+TEST_DATABASE_URL: str = settings.test_database_url
 
 DB_TABLES: Dict[str, Optional[str]] = {
     "users": "users_id_seq",
@@ -58,6 +58,7 @@ DEFAULT_QUIZ_DATA = {
     "title": "Quiz",
     "description": "Description",
     "company_id": 1,
+    "completion_time": 15,
     "fully_created": False
 }
 
@@ -85,7 +86,7 @@ def event_loop() -> Generator[asyncio.AbstractEventLoop, Any, Any]:
 
 @pytest.fixture(scope='session', autouse=True)
 async def prepare_database() -> None:
-    engine = create_async_engine(DATABASE_URL, echo=True)
+    engine = create_async_engine(TEST_DATABASE_URL, echo=True)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
@@ -95,7 +96,7 @@ async def prepare_database() -> None:
 
 @pytest.fixture(scope="session")
 async def async_session_test() -> AsyncSession:
-    engine = create_async_engine(DATABASE_URL, echo=True)
+    engine = create_async_engine(TEST_DATABASE_URL, echo=True)
     async_session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     yield async_session
 
@@ -115,7 +116,7 @@ async def _get_test_async_session() -> AsyncGenerator[AsyncSession, Any]:
     try:
         # create async engine for interaction with test database
         test_engine = create_async_engine(
-            DATABASE_URL, future=True, echo=True
+            TEST_DATABASE_URL, future=True, echo=True
         )
 
         # create async session for the interaction with test database
@@ -259,11 +260,13 @@ async def create_quiz_instance(async_session_test) -> Callable[[int], Awaitable[
     async def create_quiz_instance(title: str = DEFAULT_QUIZ_DATA["title"], 
                                     description: str = DEFAULT_QUIZ_DATA["description"],
                                     company_id: int = DEFAULT_QUIZ_DATA["company_id"], 
+                                    completion_time: int = DEFAULT_QUIZ_DATA["completion_time"], 
                                     fully_created: bool = DEFAULT_QUIZ_DATA["fully_created"]) -> Quiz:
         async with async_session_test() as session:
             quiz = Quiz(title=title, 
                         description=description, 
                         company_id=company_id, 
+                        completion_time=completion_time,
                         fully_created=fully_created)
             session.add(quiz)
             await session.commit()

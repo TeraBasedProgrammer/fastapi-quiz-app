@@ -33,7 +33,14 @@ class CompanyRepository:
         return result.unique().scalars().all()
         
     
-    async def get_company_by_id(self, company_id: int, current_user_email: EmailStr, owner_only: bool = False, admin_only: bool = False) -> Optional[Company]:
+    async def get_company_by_id(
+        self, 
+        company_id: int, 
+        current_user_email: EmailStr, 
+        member_only: bool = False, 
+        owner_only: bool = False,
+        admin_only: bool = False
+    ) -> Optional[Company]:
         logger.debug(f"Received data:\ncompany_id -> \"{company_id}\"")
         data = await self.db_session.execute(select(Company).options(joinedload(Company.users)).where(Company.id == company_id))
         company = data.unique().scalar_one_or_none()
@@ -41,11 +48,12 @@ class CompanyRepository:
             logger.debug(f"Retrieved company by id \"{company_id}\": \"{company}\"")
 
             # Check permissions
-            if company.is_hidden:
+            if company.is_hidden or member_only:
                 member_user = list(filter(lambda x: x.users.email == current_user_email, company.users))
                 if not member_user:
                     logger.warning(f"Permission error: User \"{current_user_email}\" is not a member of the company")
                     raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
+            
             if owner_only:
                 owner_user = list(filter(lambda x: x.users.email == current_user_email and x.role == RoleEnum.Owner, company.users))
                 if not owner_user:

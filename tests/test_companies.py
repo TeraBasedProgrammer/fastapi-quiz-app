@@ -359,14 +359,27 @@ async def test_get_company_quizzes_empty(
     assert data == {"items": [], "total": 0, "page": 1, "size": 50, "pages": 0}
 
 
+@pytest.mark.parametrize(
+        "role",
+        (
+            RoleEnum.Member,
+            RoleEnum.Admin,
+            RoleEnum.Owner
+        )
+)
 async def test_get_company_quizzes(
+          role: RoleEnum,
           client: httpx.AsyncClient,
           create_auth_jwt: Callable[..., Any],
           create_quiz_instance: Callable[..., Any],
-          create_default_company_object: Callable[..., Any]) -> None:
+          create_user_instance: Callable[..., Any],
+          create_company_instance: Callable[..., Any],
+          create_user_company_instance: Callable[..., Any],) -> None:
     # Instanciate test objects
-    await create_default_company_object()
-    quiz = await create_quiz_instance()
+    await create_user_instance()
+    await create_company_instance()
+    await create_user_company_instance(role=role)
+    await create_quiz_instance()
 
     token = await create_auth_jwt(DEFAULT_USER_DATA["email"])
     response = await client.get(
@@ -381,35 +394,23 @@ async def test_get_company_quizzes(
     assert quiz_data["id"] == 1
     assert quiz_data["title"] == DEFAULT_QUIZ_DATA["title"]
     assert quiz_data["description"] == DEFAULT_QUIZ_DATA["description"]
-    assert quiz_data["company_id"] == DEFAULT_QUIZ_DATA["company_id"]
-    assert quiz_data["fully_created"] == DEFAULT_QUIZ_DATA["fully_created"]
+    assert quiz_data["completion_time"] == DEFAULT_QUIZ_DATA["completion_time"]
+    assert quiz_data["questions_count"] == 0
 
 
-@pytest.mark.parametrize(
-        "is_member",
-        (
-            (True,),
-            (False,), 
-        )
-)
 async def test_get_company_quizzes_403(
-          is_member: bool,
           client: httpx.AsyncClient,
           create_auth_jwt: Callable[..., Any],
           create_user_instance: Callable[..., Any],
-          create_user_company_instance: Callable[..., Any],
           create_default_company_object: Callable[..., Any]) -> None:
     # Instanciate test objects
     await create_default_company_object()
     
     # Non admin user
-    not_admin_email = "notadmin@email.com"
-    await create_user_instance(email=not_admin_email)
+    not_member_email = "notmember@email.com"
+    await create_user_instance(email=not_member_email)
 
-    if is_member:
-        await create_user_company_instance(user_id=2, company_id=1, role=RoleEnum.Member)
-
-    token = await create_auth_jwt(not_admin_email)
+    token = await create_auth_jwt(not_member_email)
     response = await client.get(
         "/companies/1/quizzes/", headers={"Authorization": f"Bearer {token}"}
     )
