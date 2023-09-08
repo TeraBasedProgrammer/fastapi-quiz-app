@@ -1,7 +1,7 @@
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
@@ -9,6 +9,8 @@ from starlette import status
 from app.auth.handlers import AuthHandler
 from app.companies.services import CompanyRepository
 from app.database import get_async_session
+from app.quizzes_workflow.schemas import AttempReturn
+from app.quizzes_workflow.services import AttempRepository
 from app.users.schemas import DeletedInstanceResponse
 from app.users.services import error_handler
 from app.utils import get_current_user_id
@@ -36,10 +38,7 @@ async def get_quiz(quiz_id: int,
     # Initialize services
     quiz_crud = QuizRepository(session)
 
-    # Retrieving current user id
-    current_user_id = await get_current_user_id(session, auth)
- 
-    request_quiz = await quiz_crud.get_quiz_by_id(quiz_id=quiz_id, current_user_id=current_user_id, admin_access_only=True)
+    request_quiz = await quiz_crud.get_quiz_by_id(quiz_id=quiz_id, current_user_email=auth["email"], admin_access_only=True)
     if not request_quiz:
         logger.warning(f"Quiz \"{quiz_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested quiz is not found"))
@@ -80,11 +79,8 @@ async def create_question(question_data: QuestionBaseSchema,
     # Initialize services
     quiz_crud = QuizRepository(session)
 
-    # Retrieving current user id
-    current_user_id = await get_current_user_id(session, auth)
-
     # Validate if requested instances exist
-    request_quiz = await quiz_crud.get_quiz_by_id(quiz_id=question_data.quiz_id, current_user_id=current_user_id, 
+    request_quiz = await quiz_crud.get_quiz_by_id(quiz_id=question_data.quiz_id, current_user_email=auth["email"], 
                                                      admin_access_only=True)
     if not request_quiz:
         logger.warning(f"Quiz \"{question_data.quiz_id}\" is not found")
@@ -138,6 +134,39 @@ async def create_answer(answer_data: AnswerCreateSchema,
         logger.warning(f"Validation error: Question \"{question_id}\" already has answer with provided title")
         raise HTTPException(status.HTTP_400_BAD_REQUEST,
                             detail=error_handler(f"Question {question_id} already has answer with provided title"))
+
+
+@quiz_router.post("/{quiz_id}/attemp/start/", 
+                  response_model=AttempReturn,)
+async def start_quiz_attemp(quiz_id: int,
+                            session: AsyncSession = Depends(get_async_session),
+                            auth=Depends(auth_handler.auth_wrapper)) -> AttempReturn:
+    logger.info(f"Starting quiz \"{quiz_id}\" attemp")
+
+    # Initialize services
+    quiz_crud = QuizRepository(session)
+    attemp_crud = AttempRepository(session)
+ 
+    request_quiz = await quiz_crud.get_quiz_by_id(quiz_id=quiz_id, current_user_email=auth["email"], member_access_only=True)
+    if not request_quiz:
+        logger.warning(f"Quiz \"{quiz_id}\" is not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested quiz is not found"))
+    
+    # Check if requested quiz is fully created
+    if not request_quiz.fully_created:
+        logger.warning(f"User \"{auth['email']}\" tried to access not fully created quiz")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("This quiz is temporarily unavailable for completion"))
+
+    # Retrieving current user id
+    current_user_id = await get_current_user_id(session, auth)
+
+    # Check if user has available attemps for this quiz
+    if not await attemp_crud.user_has_attemps(quiz_id=quiz_id, user_id=current_user_id):
+        logger.warning(f"User \"{auth['email']}\" has already used all availabe attemps for quiz \"{quiz_id}\"")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("You've used all available attemps for this quiz"))
+    
+    attemp = await attemp_crud.create_attemp(quiz_id=quiz_id, user_id=current_user_id, quiz_completion_time=request_quiz.completion_time)
+    return AttempReturn(id=attemp.id, quiz=attemp.quiz)
     
                             
 @quiz_router.patch("/{quiz_id}/update/", response_model=Optional[QuizSchema])
@@ -154,11 +183,8 @@ async def update_quiz(quiz_id: int,
     if updated_quiz_params == {}:
         logger.warning("Validation error: No parameters have been provided")
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("At least one valid parameter (title, description) should be provided for quiz update"))
-
-    # Retrieving current user id
-    current_user_id = await get_current_user_id(session, auth)
-    
-    request_quiz = await quiz_crud.get_quiz_by_id(quiz_id=quiz_id, current_user_id=current_user_id, admin_access_only=True)
+ 
+    request_quiz = await quiz_crud.get_quiz_by_id(quiz_id=quiz_id, current_user_email=auth["email"], admin_access_only=True)
     if not request_quiz:
         logger.warning(f"Quiz \"{quiz_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler(f"Quiz with id {quiz_id} is not found"))
@@ -258,9 +284,7 @@ async def delete_quiz(quiz_id: int,
     # Initialize services
     quiz_crud = QuizRepository(session)
 
-    # Retrieving current user id
-    current_user_id = await get_current_user_id(session, auth)
-    request_quiz = await quiz_crud.get_quiz_by_id(quiz_id=quiz_id, current_user_id=current_user_id, admin_access_only=True)
+    request_quiz = await quiz_crud.get_quiz_by_id(quiz_id=quiz_id, current_user_email=auth["email"], admin_access_only=True)
     if not request_quiz:
         logger.warning(f"Quiz \"{quiz_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler(f"Quiz with id {quiz_id} is not found"))

@@ -3,6 +3,7 @@ from sqlalchemy import (Boolean, Column, ForeignKey, Integer, String, Text,
 from sqlalchemy.orm import relationship
 
 from app.database import Base
+from app.quizzes_workflow.models import Attemp
 
 
 class Quiz(Base):
@@ -19,6 +20,7 @@ class Quiz(Base):
     # daily_attemps - ?
 
     questions = relationship("Question", back_populates="quiz", lazy='joined') 
+    attemps = relationship("Attemp", back_populates="quiz", lazy='joined') 
 
     @property
     def questions_count(self) -> int:

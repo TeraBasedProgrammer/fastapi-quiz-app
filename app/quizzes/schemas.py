@@ -1,7 +1,7 @@
 import logging
 from typing import List, Optional
 
-from pydantic import BaseModel, field_validator, Field
+from pydantic import BaseModel, field_validator
 
 from app.utils import validate_text
 
@@ -80,7 +80,6 @@ class QuizBaseSchema(BaseModel):
 class QuizSchema(QuizBaseSchema):
     id: int
     questions: Optional[List[QuestionSchema]] = None
-    fully_created: bool
 
 
 class QuizListSchema(BaseModel):
@@ -105,6 +104,25 @@ class QuizUpdateSchema(BaseModel):
 
 class UpdateModelStatus(BaseModel):
     fully_created: bool
+
+
+class AttempAnswerSchema(AnswerBaseSchema):
+    id: int
+
+
+class AttempQuestionSchema(QuestionBaseSchema):
+    id: int
+    answers: List[AttempAnswerSchema]
+    
+    class Config:
+        from_attributes = True
+
+class AttempQuizSchema(QuizBaseSchema):
+    id: int
+    completion_time: int
+    questions_count: int
+    questions: List[AttempQuestionSchema]
+    
 
 
 

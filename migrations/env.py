@@ -13,6 +13,7 @@ from app.users.models import User
 from app.companies.models import Company, CompanyUser
 from app.company_requests.models import CompanyRequest
 from app.quizzes.models import Question, Quiz, Answer
+from app.quizzes_workflow.models import Attemp
 from dotenv import load_dotenv
 
 

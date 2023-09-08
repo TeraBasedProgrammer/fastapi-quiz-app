@@ -1,7 +1,6 @@
 import logging
 import logging.config
 
-import redis.asyncio as rd
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,12 +13,11 @@ from app.company_requests.router import invitation_router, request_router
 from app.config import settings
 from app.log_config import LOGGING_CONFIG
 from app.quizzes.router import quiz_router
+from app.quizzes_workflow.router import attemp_router
 from app.users.router import user_router
 
 # Set up logging configuration 
 logging.config.dictConfig(LOGGING_CONFIG)
-
-redis = rd.from_url(settings.redis_url, decode_responses=True, encoding="utf-8", db=0)
 
 
 app = FastAPI()
@@ -35,6 +33,7 @@ app.include_router(quiz_router)
 app.include_router(company_router)
 app.include_router(request_router)
 app.include_router(invitation_router)
+app.include_router(attemp_router)
 
 origins = [
     "http://localhost:8000",

@@ -2,11 +2,12 @@ import logging
 from typing import List, Optional
 
 from fastapi import HTTPException
+from pydantic import EmailStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
-from app.companies.models import Company, RoleEnum
+from app.companies.models import  RoleEnum
 from app.companies.services import CompanyRepository
 from app.users.services import error_handler
 from app.utils import (create_model_instance, delete_model_instance,
@@ -14,8 +15,8 @@ from app.utils import (create_model_instance, delete_model_instance,
 
 from .models import Answer, Question, Quiz
 from .schemas import (AnswerCreateSchema, AnswerUpdateSchema,
-                      QuestionBaseSchema, QuestionUpdateSchema,
-                      QuizBaseSchema, QuizUpdateSchema)
+                      QuestionBaseSchema, QuestionUpdateSchema, QuizBaseSchema,
+                      QuizUpdateSchema)
 
 logger = logging.getLogger("main_logger")
 
@@ -27,8 +28,6 @@ class QuizRepository:
     async def get_company_quizzes(self, company_id) -> List[Quiz]:
         query = await self.db_session.execute(
                       select(Quiz)
-                      .outerjoin(Question, Question.quiz_id == Quiz.id)
-                      .outerjoin(Answer, Answer.question_id == Question.id)
                       .where(Quiz.company_id == company_id))
         result = query.unique().scalars().all()
         return result 
@@ -36,7 +35,8 @@ class QuizRepository:
     async def get_quiz_by_id(
               self, 
               quiz_id: int,
-              current_user_id: int,
+              current_user_email: EmailStr,
+              member_access_only: bool = False,
               admin_access_only: bool = False) -> Optional[Quiz]:
         logger.debug(f"Received data:\nquiz_id -> {quiz_id}")
         query = await self.db_session.execute(
@@ -47,13 +47,14 @@ class QuizRepository:
         result = query.unique().scalar_one_or_none()
 
         if result:
+            if member_access_only:
+                company_crud = CompanyRepository(self.db_session)
+                await company_crud.get_company_by_id(result.company_id, current_user_email, member_only=True)
+                
             if admin_access_only:
                 company_crud = CompanyRepository(self.db_session)
-                # Validate if user has permission to acess the quiz
-                if not (await company_crud.user_has_role(current_user_id, result.company_id, RoleEnum.Admin) or
-                await company_crud.user_has_role(current_user_id, result.company_id, RoleEnum.Owner)): 
-                    logger.warning(f"Permission error: User \"{current_user_id}\" is not the admin / onwer in the company {result.company_id} related to the requested quiz")
-                    raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
+                await company_crud.get_company_by_id(result.company_id, current_user_email, admin_only=True)
+                
         return result 
 
     async def create_quiz(self, quiz_data: QuizBaseSchema) -> Quiz:

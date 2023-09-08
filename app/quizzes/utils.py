@@ -1,12 +1,12 @@
+import asyncio
 import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.quizzes.models import Question, Quiz
 from app.quizzes.schemas import UpdateModelStatus
-from app.utils import update_model_instance
 from app.quizzes.services import QuizRepository
-
+from app.utils import update_model_instance
 
 logger = logging.getLogger("main_logger")
 
