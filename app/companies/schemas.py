@@ -1,4 +1,5 @@
 import logging
+from decimal import Decimal
 from datetime import datetime
 from typing import Optional
 
@@ -24,6 +25,7 @@ class CompanySchema(CompanyBase):
     id: int 
     created_at: datetime
     role: Optional[RoleEnum] = Field(None, nullable=True)
+    average_score: Optional[Decimal] = Field(None, nullable=True)
     is_hidden: bool
     
     class Config:

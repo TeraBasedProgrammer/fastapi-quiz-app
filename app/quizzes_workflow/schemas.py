@@ -18,3 +18,8 @@ class AttempReturn(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+class AttempResult(BaseModel):
+    spent_time: str
+    result: int

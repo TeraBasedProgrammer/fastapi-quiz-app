@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import TIMESTAMP, Boolean, Column, Integer, String
+from sqlalchemy import TIMESTAMP, Boolean, Column, Integer, String, DECIMAL
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -16,6 +16,7 @@ class User(Base):
     registered_at = Column(TIMESTAMP, default=datetime.utcnow())
     password = Column(String(length=1024), nullable=False)
     auth0_registered = Column(Boolean, default=False, nullable=False)
+    overall_avg_score = Column(DECIMAL, default=0)
 
     companies = relationship("CompanyUser", back_populates="users")
     attemps = relationship("Attemp", back_populates="user", lazy='joined') 

@@ -22,6 +22,7 @@ class UserFullSchema(UserSchema):
             email=user_model.email,
             registered_at=user_model.registered_at,
             auth0_registered=user_model.auth0_registered,
+            overall_avg_score=user_model.overall_avg_score ,
             companies=[
                 CompanySchema(
                     id=company.companies.id,
@@ -30,6 +31,7 @@ class UserFullSchema(UserSchema):
                     created_at=company.companies.created_at,
                     is_hidden=company.companies.is_hidden,
                     role=company.role,
+                    average_score=company.average_score,
                 )
                 for company in user_model.companies 
                 if not company.companies.is_hidden or public_request == False
@@ -67,6 +69,7 @@ class CompanyFullSchema(CompanySchema):
                     email=user.users.email,
                     registered_at=user.users.registered_at,
                     auth0_registered=user.users.auth0_registered,
+                    overall_avg_score=user.users.overall_avg_score ,
                     role=user.role
                 )
                 for user in company_model.users

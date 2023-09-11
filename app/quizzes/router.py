@@ -164,6 +164,11 @@ async def start_quiz_attemp(quiz_id: int,
     if not await attemp_crud.user_has_attemps(quiz_id=quiz_id, user_id=current_user_id):
         logger.warning(f"User \"{auth['email']}\" has already used all availabe attemps for quiz \"{quiz_id}\"")
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("You've used all available attemps for this quiz"))
+
+    # Check if user hasn't start this attemp already
+    if await attemp_crud.has_started_attemp(current_user_id, quiz_id):
+        logger.warning(f"User \"{auth['email']}\" has an ongoing attemp with quiz \"{quiz_id}\"")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("You already have an ongoing attemp with this quiz"))
     
     attemp = await attemp_crud.create_attemp(quiz_id=quiz_id, user_id=current_user_id, quiz_completion_time=request_quiz.completion_time)
     return AttempReturn(id=attemp.id, quiz=attemp.quiz)

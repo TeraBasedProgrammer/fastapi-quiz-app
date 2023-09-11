@@ -34,6 +34,7 @@ class UserSchema(UserBase):
     registered_at: datetime
     auth0_registered: Optional[bool] 
     role: Optional[RoleEnum] = Field(None, nullable=True)
+    overall_avg_score: int 
     
     class Config:
         from_attributes = True

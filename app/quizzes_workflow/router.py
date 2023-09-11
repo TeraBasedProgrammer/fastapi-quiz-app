@@ -1,18 +1,19 @@
 import logging
 from typing import Dict
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
-from app.utils import get_current_user_id
 from app.auth.handlers import AuthHandler
 from app.database import get_async_session
 from app.quizzes.services import QuizRepository
 from app.users.services import error_handler
+from app.utils import get_current_user_id
 
+from .utils import attemp_is_completed
 from .services import AttempRepository
-    
 
 logger = logging.getLogger("main_logger")
 auth_handler = AuthHandler()
@@ -42,15 +43,24 @@ async def answer_question(
     current_user_id = await get_current_user_id(session, auth)
 
     # Validate if requested instances exist and if user can access them
-    request_attemp = await attemp_crud.get_attemp_by_id(attemp_id)
+
+    # Attemp
+    request_attemp = await attemp_crud.get_attemp_by_id(
+        attemp_id=attemp_id, 
+        current_user_id=current_user_id, 
+        validate_user=True
+    )
+
     if not request_attemp:
         logger.warning(f"Attemp \"{attemp_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler(f"Attemp with id {attemp_id} is not found"))
     
-    if request_attemp.user_id != current_user_id:
-        logger.warning(f"Permission error: User \"{current_user_id}\" is not the performer of the attemp \"{attemp_id}\"")
-        raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
+    # Check if attemp is completed
+    if await attemp_is_completed(request_attemp, datetime.utcnow()):
+        logger.warning(f"User \"{current_user_id}\" has already completed attemp \"{attemp_id}\"")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler(f"You've already completed this attemp"))
 
+    # Question
     request_question = await quiz_crud.get_question_by_id(question_id=question_id, current_user_id=current_user_id, admin_access_only=True)
     if not request_question:
         logger.warning(f"Question \"{question_id}\" is not found")
@@ -60,6 +70,7 @@ async def answer_question(
         logger.warning(f"Current attemp's quiz \"{request_attemp.quiz_id}\" doesn't have question \"{request_question.id}\"")
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler(f"Quiz {request_attemp.quiz_id} doesn't have question {question_id}"))
     
+    # Answer
     request_answer = await quiz_crud.get_answer_by_id(answer_id, current_user_id, admin_access_only=True)
     if not request_answer:
         logger.warning(f"Answer \"{answer_id}\" is not found")
@@ -77,3 +88,34 @@ async def answer_question(
         answer_id=answer_id,
     )
     return {"response": "Answer received"}
+
+
+@attemp_router.post("/{attemp_id}/complete/")
+async def complete_attemp(
+    attemp_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    auth=Depends(auth_handler.auth_wrapper)
+):
+    # Initialize services
+    attemp_crud = AttempRepository(session)
+
+    current_user_id = await get_current_user_id(session, auth)
+
+    request_attemp = await attemp_crud.get_attemp_by_id(
+        attemp_id=attemp_id,
+        current_user_id=current_user_id,
+        validate_user=True,
+    )
+
+    if not request_attemp:
+        logger.warning(f"Attemp \"{attemp_id}\" is not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler(f"Attemp with id {attemp_id} is not found"))
+    
+    # Check if attemp is already completed
+    if await attemp_is_completed(request_attemp, datetime.utcnow()):
+        logger.warning(f"User \"{current_user_id}\" has already completed attemp \"{attemp_id}\"")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler(f"You've already completed this attemp"))
+
+    result = await attemp_crud.calculate_attemp_result(attemp=request_attemp, timestamp=datetime.utcnow())
+
+    return {"result": f"{result}"} 

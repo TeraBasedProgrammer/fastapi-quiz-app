@@ -2,7 +2,7 @@ import enum
 from datetime import datetime
 
 from sqlalchemy import (TIMESTAMP, Boolean, Column, Enum, ForeignKey, Integer,
-                        String)
+                        String, DECIMAL)
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -34,6 +34,7 @@ class CompanyUser(Base):
     company_id = Column(ForeignKey('companies.id', ondelete="CASCADE"), primary_key=True)
     user_id = Column(ForeignKey('users.id', ondelete="CASCADE"), primary_key=True)
     role = Column(Enum(RoleEnum), nullable=False, default=RoleEnum.Member)
+    average_score = Column(DECIMAL, default=0)
 
     users = relationship("User", back_populates="companies", lazy='subquery') 
     companies = relationship("Company",  back_populates="users", lazy='subquery')

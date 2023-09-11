@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
-from app.companies.models import  RoleEnum
+from app.companies.models import RoleEnum
 from app.companies.services import CompanyRepository
 from app.users.services import error_handler
 from app.utils import (create_model_instance, delete_model_instance,

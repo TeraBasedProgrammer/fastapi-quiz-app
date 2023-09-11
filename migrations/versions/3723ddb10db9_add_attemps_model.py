@@ -1,8 +1,8 @@
 """add attemps model
 
-Revision ID: aaf78fb28d15
+Revision ID: 3723ddb10db9
 Revises: 0d28b3ebef3d
-Create Date: 2023-09-06 19:04:33.608897
+Create Date: 2023-09-11 10:44:53.440544
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'aaf78fb28d15'
+revision = '3723ddb10db9'
 down_revision = '0d28b3ebef3d'
 branch_labels = None
 depends_on = None
@@ -24,7 +24,7 @@ def upgrade() -> None:
     sa.Column('user_id', sa.Integer(), nullable=True),
     sa.Column('start_time', sa.DateTime(), nullable=True),
     sa.Column('end_time', sa.DateTime(), nullable=True),
-    sa.Column('spent_time', sa.DateTime(), nullable=True),
+    sa.Column('spent_time', sa.String(), nullable=True),
     sa.Column('result', sa.Integer(), nullable=True),
     sa.ForeignKeyConstraint(['quiz_id'], ['quizzes.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
