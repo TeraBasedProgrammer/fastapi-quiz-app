@@ -4,18 +4,21 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import HTTPException
 from pydantic import EmailStr
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 from starlette import status
 
 from app.auth.handlers import AuthHandler
 from app.auth.schemas import UserSignUp, UserSignUpAuth0
+from app.companies.models import CompanyUser, Company
+from app.quizzes.models import Quiz
+from app.quizzes_workflow.models import Attemp
 from app.users.models import User
 from app.utils import (create_model_instance, delete_model_instance,
                        update_model_instance)
 
-from .schemas import UserSchema, UserUpdateRequest
+from .schemas import UserSchema, UserUpdateRequest, UpdateUserScore
 
 logger = logging.getLogger("main_logger")
 
@@ -98,6 +101,54 @@ class UserRepository:
             logger.warning("Error: user with provided email has been registered using logging-password way")
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("User with is email has already been registered. Try to register with another email"))
 
+    async def set_global_score(self, user_id: int) -> None:
+        logger.debug(f"Received data:\nuser_id -> \"{user_id}\"")
+        query = await self.db_session.execute(
+            select(Attemp)
+            .where(Attemp.user_id == user_id)
+        )
+        attemps = query.scalars().unique().all() 
+        questions_count = sum([attemp.quiz.questions_count for attemp in attemps])
+        results_count = sum([attemp.result for attemp in attemps])
+
+        avg_score = results_count / questions_count
+        await update_model_instance(
+            self.db_session, 
+            User, 
+            user_id, 
+            UpdateUserScore(overall_avg_score=avg_score)
+        )
+
+    async def set_company_score(
+        self, 
+        user_id: int, 
+        company_id: int
+    ) -> None:
+        logger.debug(f"Received data:\nuser_id -> \"{user_id}\"")
+        query = await self.db_session.execute(
+            select(Attemp)
+            .where(
+                (Attemp.user_id == user_id) &
+                (Attemp.quiz_id == Quiz.id) &
+                (Company.id == Quiz.company_id)
+            )
+        )
+        attemps = query.scalars().unique().all() 
+        questions_count = sum([attemp.quiz.questions_count for attemp in attemps])
+        results_count = sum([attemp.result for attemp in attemps])
+
+        avg_score = results_count / questions_count
+
+        # Update CompanyUser instance
+        query = (
+            update(CompanyUser)
+            .where((CompanyUser.user_id == user_id)
+                    & (CompanyUser.company_id == company_id))
+            .values({"average_score": avg_score})
+        )
+        await self.db_session.execute(query)
+        await self.db_session.commit()
+        
 
 def error_handler(message: str) -> Dict[str, str]:
     return {"error": message}

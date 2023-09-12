@@ -1,3 +1,4 @@
+from decimal import Decimal
 import logging
 import re
 from datetime import datetime
@@ -34,7 +35,7 @@ class UserSchema(UserBase):
     registered_at: datetime
     auth0_registered: Optional[bool] 
     role: Optional[RoleEnum] = Field(None, nullable=True)
-    overall_avg_score: int 
+    overall_avg_score: Decimal 
     
     class Config:
         from_attributes = True
@@ -65,3 +66,6 @@ class UserUpdateRequest(UserBase):
 
 class DeletedInstanceResponse(BaseModel):
     deleted_instance_id: int
+
+class UpdateUserScore(BaseModel):
+    overall_avg_score: Decimal

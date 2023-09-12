@@ -9,7 +9,7 @@ from app.quizzes.schemas import AttempQuizSchema
 class CreateAttemp(BaseModel):
     quiz_id: int
     user_id: int
-    start_time: datetime = datetime.utcnow()
+    start_time: datetime
 
 
 class AttempReturn(BaseModel):

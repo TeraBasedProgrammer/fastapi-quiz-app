@@ -1,19 +1,19 @@
 import logging
-from typing import Dict
 from datetime import datetime
+from typing import Dict
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
 from app.auth.handlers import AuthHandler
 from app.database import get_async_session
 from app.quizzes.services import QuizRepository
-from app.users.services import error_handler
+from app.users.services import error_handler, UserRepository
 from app.utils import get_current_user_id
 
-from .utils import attemp_is_completed
 from .services import AttempRepository
+from .utils import attemp_is_completed
 
 logger = logging.getLogger("main_logger")
 auth_handler = AuthHandler()
@@ -93,11 +93,13 @@ async def answer_question(
 @attemp_router.post("/{attemp_id}/complete/")
 async def complete_attemp(
     attemp_id: int,
+    background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_async_session),
     auth=Depends(auth_handler.auth_wrapper)
 ):
     # Initialize services
     attemp_crud = AttempRepository(session)
+    user_crud = UserRepository(session)
 
     current_user_id = await get_current_user_id(session, auth)
 
@@ -117,5 +119,13 @@ async def complete_attemp(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler(f"You've already completed this attemp"))
 
     result = await attemp_crud.calculate_attemp_result(attemp=request_attemp, timestamp=datetime.utcnow())
+
+    # Update user ratings
+    background_tasks.add_task(user_crud.set_global_score, user_id=request_attemp.user_id)
+    background_tasks.add_task(
+        user_crud.set_company_score, 
+        user_id=request_attemp.user_id, 
+        company_id=request_attemp.quiz.company_id,
+    )
 
     return {"result": f"{result}"} 

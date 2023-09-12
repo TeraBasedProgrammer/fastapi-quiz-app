@@ -13,7 +13,7 @@ from app.users.services import error_handler
 from app.utils import create_model_instance, update_model_instance
 
 from .models import Attemp
-from .schemas import CreateAttemp, AttempResult
+from .schemas import AttempResult, CreateAttemp
 from .utils import attemp_is_completed
 
 logger = logging.getLogger("main_logger")
@@ -32,7 +32,11 @@ class AttempRepository:
         attemp = await create_model_instance(
             self.db_session,
             Attemp,
-            CreateAttemp(quiz_id=quiz_id, user_id=user_id),
+            CreateAttemp(
+                quiz_id=quiz_id, 
+                user_id=user_id, 
+                start_time=datetime.utcnow()
+            ),
         )
         attemp.end_time = attemp.start_time + timedelta(minutes=quiz_completion_time)
 
@@ -50,7 +54,7 @@ class AttempRepository:
             )
         )
 
-        if used_attemps.scalar() >= 2:
+        if len(used_attemps.scalars().unique().all()) >= 2:
             return False
         return True
 
@@ -94,7 +98,7 @@ class AttempRepository:
             )
         )
         
-        attemp = result.scalar()
+        attemp = result.unique().scalar_one_or_none()
         if not attemp:
             logger.info(f"User \"{user_id}\" doesn't have ongoing attemps with quiz \"{quiz_id}\"")
             return False
@@ -118,14 +122,14 @@ class AttempRepository:
 
         # Get all keys from redis related to the given attemp
         answers_keys = await redis.keys(f"{attemp.id}*")
-        answers_values = await redis.mget(answers_keys)
+        answers_values = [int(answer) for answer in await redis.mget(answers_keys)]
 
         # Retrieve answers from database
         query = await self.db_session.execute(
             select(Answer)
             .where(Answer.id.in_(answers_values))
         )
-        answers_instances = query.scalar()
+        answers_instances = query.scalars().unique().all()
 
         # Count correct answers
         result = 0
@@ -133,6 +137,8 @@ class AttempRepository:
             for answer in answers_instances:
                 if answer.is_correct:
                     result += 1
+
+        # Set attemp results
 
         await update_model_instance(
             self.db_session, 
