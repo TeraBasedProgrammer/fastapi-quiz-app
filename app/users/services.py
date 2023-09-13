@@ -11,14 +11,14 @@ from starlette import status
 
 from app.auth.handlers import AuthHandler
 from app.auth.schemas import UserSignUp, UserSignUpAuth0
-from app.companies.models import CompanyUser, Company
+from app.companies.models import Company, CompanyUser
 from app.quizzes.models import Quiz
 from app.quizzes_workflow.models import Attempt
 from app.users.models import User
 from app.utils import (create_model_instance, delete_model_instance,
                        update_model_instance)
 
-from .schemas import UserSchema, UserUpdateRequest, UpdateUserScore
+from .schemas import UpdateUserScore, UserSchema, UserUpdateRequest
 
 logger = logging.getLogger("main_logger")
 

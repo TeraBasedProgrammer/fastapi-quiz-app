@@ -5,10 +5,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
+from app.companies.services import CompanyRepository
 from app.company_requests.schemas import (UserInvitationSchema,
                                           UserRequestSchema)
 from app.company_requests.services import CompanyRequestsRepository
 from app.database import get_async_session
+from app.quizzes_workflow.schemas import AttemptListResponseModel
+from app.quizzes_workflow.services import AttemptRepository
 from app.schemas import UserFullSchema
 from app.users.services import UserRepository, error_handler
 from app.utils import get_current_user_id
@@ -67,6 +70,50 @@ async def get_sent_requests(session: AsyncSession = Depends(get_async_session),
     res = await request_crud.get_sent_requests(sender_id=current_user_id)
     logger.info(f"Successfully retrieved current user sent requests list")
     return res
+
+
+@auth_router.get("/me/attempts/", response_model=list[AttemptListResponseModel])
+async def get_all_attempts(
+    session: AsyncSession = Depends(get_async_session),
+    auth=Depends(auth_handler.auth_wrapper)
+) -> list[AttemptListResponseModel]:
+    logger.info(f"Retrieving current user attempts")
+    
+    # Initialize services
+    attempt_crud = AttemptRepository(session)
+    
+    # Retrieving current user id
+    current_user_id = await get_current_user_id(session, auth)
+
+    res = await attempt_crud.get_user_attempts(current_user_id)
+    logger.info(f"Successfully retrieved current user attempts")
+    return res
+
+
+@auth_router.get("/me/{company_id}/attempts/", response_model=list[AttemptListResponseModel])
+async def get_company_attempts(
+    company_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    auth=Depends(auth_handler.auth_wrapper)
+) -> list[AttemptListResponseModel]:
+    logger.info(f'Retrieving current user attempts in company "{company_id}"')
+    
+    # Initialize services
+    attempt_crud = AttemptRepository(session)
+    company_crud = CompanyRepository(session)
+    
+    # Retrieving current user id
+    current_user_id = await get_current_user_id(session, auth)
+
+    request_company = await company_crud.get_company_by_id(company_id, current_user_id, member_only=True)
+    if not request_company:
+        logger.warning(f"Company \"{company_id}\" is not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested company is not found"))
+
+    res = await attempt_crud.get_user_attempts(current_user_id, company_id=company_id)
+    logger.info(f'Successfully retrieved current user attempts in company "{company_id}"')
+    return res
+
 
 
 @auth_router.post("/signup/", response_model=Optional[Dict[str, Any]], status_code=201)

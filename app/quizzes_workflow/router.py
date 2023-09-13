@@ -2,18 +2,18 @@ import logging
 from datetime import datetime
 from typing import Dict
 
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
 from app.auth.handlers import AuthHandler
 from app.database import get_async_session
 from app.quizzes.services import QuizRepository
-from app.users.services import error_handler, UserRepository
+from app.users.services import UserRepository, error_handler
 from app.utils import get_current_user_id
 
+from .schemas import AttemptResultResponseModel
 from .services import AttemptRepository
-from .schemas import AttempResultResponseModel
 from .utils import attempt_is_completed
 
 logger = logging.getLogger("main_logger")
@@ -24,7 +24,7 @@ attempt_router = APIRouter(
 )
 
 
-@attempt_router.get("/{attempt_id}/answers/", response_model=AttempResultResponseModel)
+@attempt_router.get("/{attempt_id}/answers/", response_model=AttemptResultResponseModel)
 async def get_attempt_answers(
     attempt_id: int,
     session: AsyncSession = Depends(get_async_session),

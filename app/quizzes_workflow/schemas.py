@@ -27,15 +27,23 @@ class AttemptResult(BaseModel):
     result: int
 
 
-class AttempQuestionAnswer(BaseModel):
+class AttemptQuestionAnswer(BaseModel):
     title: str
     answers: list[str]
     user_answer: Optional[str]
     is_correct: Optional[bool]
 
 
-class AttempResultResponseModel(BaseModel):
+class AttemptResultResponseModel(BaseModel):
     quiz: str
     result: str
     spent_time: str
-    questions: list[AttempQuestionAnswer]
+    questions: list[AttemptQuestionAnswer]
+
+
+class AttemptListResponseModel(BaseModel):
+    id: int
+    quiz_title: str
+    result: str
+    spent_time: str
+    answers_are_expired: bool 
