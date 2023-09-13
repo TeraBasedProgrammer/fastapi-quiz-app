@@ -10,6 +10,7 @@ class CreateAttempt(BaseModel):
     quiz_id: int
     user_id: int
     start_time: datetime
+    spent_time: str
 
 
 class AttemptReturn(BaseModel):

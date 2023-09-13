@@ -36,7 +36,8 @@ class AttemptRepository:
             CreateAttempt(
                 quiz_id=quiz_id, 
                 user_id=user_id, 
-                start_time=datetime.utcnow()
+                start_time=datetime.utcnow(),
+                spent_time=f"{quiz_completion_time}:00"
             ),
         )
         attempt.end_time = attempt.start_time + timedelta(minutes=quiz_completion_time)
@@ -148,7 +149,3 @@ class AttemptRepository:
         )        
 
         return f"{result}/{attempt.quiz.questions_count}"
-    
-    async def set_attempt_result_delayed(completion_time: int) -> None:
-        await asyncio.sleep(completion_time * 60 + 2)
-

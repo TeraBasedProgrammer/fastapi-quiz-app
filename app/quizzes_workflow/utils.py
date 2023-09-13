@@ -19,7 +19,9 @@ async def attempt_is_completed(
         start_time=attempt.start_time,
         time_to_check=time_to_check,
         end_time=attempt.end_time
-    ) or attempt.spent_time is not None:
+    ):
+        return True
+    elif int(attempt.spent_time.split(":")[0]) != attempt.quiz.completion_time:
         return True
     else:
         return False
