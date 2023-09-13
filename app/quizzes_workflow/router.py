@@ -13,6 +13,7 @@ from app.users.services import error_handler, UserRepository
 from app.utils import get_current_user_id
 
 from .services import AttemptRepository
+from .schemas import AttempResultResponseModel
 from .utils import attempt_is_completed
 
 logger = logging.getLogger("main_logger")
@@ -22,6 +23,40 @@ attempt_router = APIRouter(
     prefix="/attempts", tags=["Attempts"], responses={404: {"description": "Not found"}}
 )
 
+
+@attempt_router.get("/{attempt_id}/answers/", response_model=AttempResultResponseModel)
+async def get_attempt_answers(
+    attempt_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    auth=Depends(auth_handler.auth_wrapper)
+):
+    # Initialize services
+    attempt_crud = AttemptRepository(session)
+
+    current_user_id = await get_current_user_id(session, auth)
+
+    request_attempt = await attempt_crud.get_attempt_by_id(
+        attempt_id=attempt_id,
+        current_user_id=current_user_id,
+        validate_user=True,
+    )
+
+    if not request_attempt:
+        logger.warning(f"Attempt \"{attempt_id}\" is not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler(f"Attempt with id {attempt_id} is not found"))
+
+    # Check if attempt is completed
+    if not await attempt_is_completed(request_attempt, datetime.utcnow()):
+        logger.warning(f"Attemp \"{attempt_id}\" is not completed")
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler(f"Forbidden"))
+
+    answers = await attempt_crud.get_attempt_results(attempt_id)
+    if not answers:
+        logger.warning(f"Results for attemp \"{attempt_id}\" has expired")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler(f"Not found"))
+    
+    return answers
+    
 
 @attempt_router.post(
     "/{attempt_id}/answer-question/{question_id}/{answer_id}/",
@@ -61,7 +96,7 @@ async def answer_question(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler(f"You've already completed this attempt"))
 
     # Question
-    request_question = await quiz_crud.get_question_by_id(question_id=question_id, current_user_id=current_user_id, admin_access_only=True)
+    request_question = await quiz_crud.get_question_by_id(question_id=question_id, current_user_id=current_user_id, member_access_only=True)
     if not request_question:
         logger.warning(f"Question \"{question_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler(f"Question with id {question_id} is not found"))
@@ -71,7 +106,7 @@ async def answer_question(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler(f"Quiz {request_attempt.quiz_id} doesn't have question {question_id}"))
     
     # Answer
-    request_answer = await quiz_crud.get_answer_by_id(answer_id, current_user_id, admin_access_only=True)
+    request_answer = await quiz_crud.get_answer_by_id(answer_id, current_user_id=current_user_id, member_access_only=True)
     if not request_answer:
         logger.warning(f"Answer \"{answer_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler(f"Answer with id {answer_id} is not found"))
@@ -91,13 +126,13 @@ async def answer_question(
     return {"response": "Answer received"}
 
 
-@attempt_router.post("/{attempt_id}/complete/")
+@attempt_router.post("/{attempt_id}/complete/", response_model=Dict[str, str])
 async def complete_attempt(
     attempt_id: int,
     background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_async_session),
     auth=Depends(auth_handler.auth_wrapper)
-):
+) -> Dict[str, str]:
     # Initialize services
     attempt_crud = AttemptRepository(session)
     user_crud = UserRepository(session)
@@ -130,12 +165,3 @@ async def complete_attempt(
     )
 
     return {"result": f"{result}"} 
-
-
-@attempt_router.get("/{attempt_id}/answers/")
-async def get_attempt_answers(
-    attempt_id: int,
-    session: AsyncSession = Depends(get_async_session),
-    auth=Depends(auth_handler.auth_wrapper)
-):
-    pass

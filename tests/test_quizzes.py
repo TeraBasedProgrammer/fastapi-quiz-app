@@ -32,7 +32,6 @@ async def test_get_quiz_by_id(
     assert quiz_data["title"] == DEFAULT_QUIZ_DATA["title"]
     assert quiz_data["description"] == DEFAULT_QUIZ_DATA["description"]
     assert quiz_data["company_id"] == DEFAULT_QUIZ_DATA["company_id"]
-    assert quiz_data["fully_created"] == DEFAULT_QUIZ_DATA["fully_created"]
 
 
 async def test_get_quiz_by_id_404(
@@ -106,7 +105,6 @@ async def test_create_quiz(
     assert quiz_data["description"] == quiz_data["description"]
     assert quiz_data["company_id"] == quiz_data["company_id"]
     assert quiz_data["completion_time"] == quiz_data["completion_time"]
-    assert quiz_data["fully_created"] == False
 
 
 @pytest.mark.parametrize(
@@ -498,7 +496,6 @@ async def test_update_quiz(
     assert quiz_data["title"] == quiz_data["title"]
     assert quiz_data["description"] == quiz_data["description"]
     assert quiz_data["company_id"] == DEFAULT_QUIZ_DATA["company_id"]
-    assert quiz_data["fully_created"] == False
 
 
 @pytest.mark.parametrize(

@@ -133,7 +133,7 @@ async def request_company_membership(company_id: int,
     current_user_id = await get_current_user_id(session, auth)
 
     # Validate if requested company exists
-    request_company = await company_crud.get_company_by_id(company_id, auth["email"])
+    request_company = await company_crud.get_company_by_id(company_id, current_user_id)
     if not request_company:
         logger.warning(f"Company \"{company_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested company is not found"))

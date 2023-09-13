@@ -56,7 +56,9 @@ async def get_company(company_id: int,
     # Intialize services
     company_crud = CompanyRepository(session)
 
-    company = await company_crud.get_company_by_id(company_id, auth["email"])
+    current_user_id = await get_current_user_id(session, auth)
+
+    company = await company_crud.get_company_by_id(company_id, current_user_id)
     if not company:
         logger.warning(f"Company \"{company_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, error_handler("Company is not found"))
@@ -74,8 +76,10 @@ async def get_quizzes(company_id: int,
     quiz_crud = QuizRepository(session)
     company_crud = CompanyRepository(session)
 
+    current_user_id = await get_current_user_id(session, auth)
+
     # Validate if requested instances exist
-    request_company = await company_crud.get_company_by_id(company_id, auth["email"], member_only=True)
+    request_company = await company_crud.get_company_by_id(company_id, current_user_id, member_only=True)
     if not request_company:
         logger.warning(f"Company \"{company_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested company is not found"))
@@ -92,8 +96,10 @@ async def get_received_requests(company_id: int,
     # Initialize services
     request_crud = CompanyRequestsRepository(session)
     company_crud = CompanyRepository(session)
+
+    current_user_id = await get_current_user_id(session, auth)
     
-    company = await company_crud.get_company_by_id(company_id, auth["email"], admin_only=True)
+    company = await company_crud.get_company_by_id(company_id, current_user_id, admin_only=True)
     if not company:
         logger.warning(f"Company \"{company_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested company is not found"))
@@ -112,8 +118,10 @@ async def get_sent_invitations(company_id: int,
     # Initialize services
     request_crud = CompanyRequestsRepository(session)
     company_crud = CompanyRepository(session)
+
+    current_user_id = await get_current_user_id(session, auth)
     
-    company = await company_crud.get_company_by_id(company_id, auth["email"], admin_only=True)
+    company = await company_crud.get_company_by_id(company_id, current_user_id, admin_only=True)
     if not company:
         logger.warning(f"Company \"{company_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested company is not found"))
@@ -132,7 +140,9 @@ async def get_company_admin_list(company_id: int,
     # Initialize services
     company_crud = CompanyRepository(session)
 
-    request_company = await company_crud.get_company_by_id(company_id, auth["email"], admin_only=True)
+    current_user_id = await get_current_user_id(session, auth)
+
+    request_company = await company_crud.get_company_by_id(company_id, current_user_id, admin_only=True)
     if not request_company:
         logger.warning(f"Company \"{company_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested company is not found"))
@@ -171,8 +181,10 @@ async def invite_user(company_id: int,
     company_crud = CompanyRepository(session)
     user_crud = UserRepository(session)
 
+    current_user_id = await get_current_user_id(session, auth)
+
     # Validate if requested instances exist
-    request_company = await company_crud.get_company_by_id(company_id, auth["email"], admin_only=True)
+    request_company = await company_crud.get_company_by_id(company_id, current_user_id, admin_only=True)
     if not request_company:
         logger.warning(f"Company \"{company_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested company is not found"))
@@ -209,7 +221,9 @@ async def give_admin_role(company_id: int,
     user_crud = UserRepository(session)
     company_crud = CompanyRepository(session)
 
-    company = await company_crud.get_company_by_id(company_id, auth["email"], owner_only=True)
+    current_user_id = await get_current_user_id(session, auth)
+
+    company = await company_crud.get_company_by_id(company_id, current_user_id, owner_only=True)
     if not company:
         logger.warning(f"Company \"{company_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested company is not found"))
@@ -255,7 +269,9 @@ async def take_admin_role(company_id: int,
     user_crud = UserRepository(session)
     company_crud = CompanyRepository(session)
 
-    company = await company_crud.get_company_by_id(company_id, auth["email"], owner_only=True)
+    current_user_id = await get_current_user_id(session, auth)
+
+    company = await company_crud.get_company_by_id(company_id, current_user_id, owner_only=True)
     if not company:
         logger.warning(f"Company \"{company_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested company is not found"))
@@ -294,13 +310,18 @@ async def update_company(company_id: int, body: CompanyUpdate,
                       session: AsyncSession = Depends(get_async_session),
                       auth=Depends(auth_handler.auth_wrapper)) -> Optional[CompanyFullSchema]:
     logger.info(f"Updating Company instance \"{company_id}\"")
+
+    # Initialize services
     company_crud = CompanyRepository(session)
+
+    current_user_id = await get_current_user_id(session, auth)
+    
     updated_user_params = body.model_dump(exclude_none=True)
     if updated_user_params == {}:
         logger.warning("Validation error: No parameters have been provided")
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("At least one valid parameter (title, description, is_hidden) should be provided for user update query"))
     try: 
-        company_for_update = await company_crud.get_company_by_id(company_id, auth["email"], owner_only=True)
+        company_for_update = await company_crud.get_company_by_id(company_id, current_user_id, owner_only=True)
         if not company_for_update:
             logger.warning(f"Company \"{company_id}\" is not found")
             raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Company is not found"))
@@ -319,8 +340,10 @@ async def delete_company(company_id: int,
     logger.info(f"Deleting Company instance \"{company_id}\"")
     company_crud = CompanyRepository(session)
 
+    current_user_id = await get_current_user_id(session, auth)
+
     # Check if company exists
-    company_for_deletion = await company_crud.get_company_by_id(company_id, auth["email"], owner_only=True)
+    company_for_deletion = await company_crud.get_company_by_id(company_id, current_user_id, owner_only=True)
     if not company_for_deletion:
         logger.warning(f"Company \"{company_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Company is not found"))
@@ -342,8 +365,11 @@ async def kick_user(company_id: int,
     company_crud = CompanyRepository(session)
     user_crud = UserRepository(session)
 
+    # Retrieving current user id
+    current_user_id = await get_current_user_id(session, auth)
+    
     # Validate if requested instances exist
-    request_company = await company_crud.get_company_by_id(company_id, auth["email"], admin_only=True)
+    request_company = await company_crud.get_company_by_id(company_id, current_user_id, admin_only=True)
     if not request_company:
         logger.warning(f"Company \"{company_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested company is not found"))
@@ -357,9 +383,6 @@ async def kick_user(company_id: int,
     if not await company_crud.check_user_membership(user_id=user_id, company_id=company_id):
         logger.warning(f"User \"{request_user}\" is not the member of the company \"{request_company}\"") 
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler(f"User {request_user.email} is not the member of the company {request_company.title}"))
-    
-    # Retrieving current user id
-    current_user_id = await get_current_user_id(session, auth)
 
     if user_id == current_user_id:
         logger.warning(f"Validation error: User \"{current_user_id}\" tried to kick itself from the company")
@@ -386,16 +409,16 @@ async def leave_company(company_id: int,
     # Initialize services 
     request_crud = CompanyRequestsRepository(session)
     company_crud = CompanyRepository(session)
-    user_crud = UserRepository(session)
+    
+    # Retrieving current user id
+    current_user_id = await get_current_user_id(session, auth)
 
     # Validate if requested instances exist
-    request_company = await company_crud.get_company_by_id(company_id, auth["email"])
+    request_company = await company_crud.get_company_by_id(company_id, current_user_id)
     if not request_company:
         logger.warning(f"Company \"{company_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested company is not found"))
 
-    # Retrieving current user id
-    current_user_id = await get_current_user_id(session, auth)
 
     # Validate if user is member of the company
     if not await company_crud.check_user_membership(user_id=current_user_id, company_id=company_id):

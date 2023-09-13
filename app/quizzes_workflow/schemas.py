@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 from app.quizzes.schemas import AttemptQuizSchema
 
+QuestionTitle = str
 
 class CreateAttempt(BaseModel):
     quiz_id: int
@@ -24,3 +25,17 @@ class AttemptReturn(BaseModel):
 class AttemptResult(BaseModel):
     spent_time: str
     result: int
+
+
+class AttempQuestionAnswer(BaseModel):
+    title: str
+    answers: list[str]
+    user_answer: Optional[str]
+    is_correct: Optional[bool]
+
+
+class AttempResultResponseModel(BaseModel):
+    quiz: str
+    result: str
+    spent_time: str
+    questions: list[AttempQuestionAnswer]

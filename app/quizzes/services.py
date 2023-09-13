@@ -35,7 +35,7 @@ class QuizRepository:
     async def get_quiz_by_id(
               self, 
               quiz_id: int,
-              current_user_email: EmailStr,
+              current_user_id: int,
               member_access_only: bool = False,
               admin_access_only: bool = False) -> Optional[Quiz]:
         logger.debug(f"Received data:\nquiz_id -> {quiz_id}")
@@ -49,11 +49,11 @@ class QuizRepository:
         if result:
             if member_access_only:
                 company_crud = CompanyRepository(self.db_session)
-                await company_crud.get_company_by_id(result.company_id, current_user_email, member_only=True)
+                await company_crud.get_company_by_id(result.company_id, current_user_id, member_only=True)
                 
             if admin_access_only:
                 company_crud = CompanyRepository(self.db_session)
-                await company_crud.get_company_by_id(result.company_id, current_user_email, admin_only=True)
+                await company_crud.get_company_by_id(result.company_id, current_user_id, admin_only=True)
                 
         return result 
 
@@ -85,7 +85,8 @@ class QuizRepository:
               self, 
               question_id: int, 
               current_user_id: int, 
-              admin_access_only: bool = False) -> Question:
+              admin_access_only: bool = False,
+              member_access_only: bool = False) -> Question:
         logger.debug(f"Received data:\nquestion_id -> {question_id}")
         query = await self.db_session.execute(
                       select(Question)
@@ -93,14 +94,14 @@ class QuizRepository:
         result = query.unique().scalar_one_or_none()
         
         if result:
+            if member_access_only:
+                company_crud = CompanyRepository(self.db_session)
+                await company_crud.get_company_by_id(result.quiz.company_id, current_user_id, member_only=True)
+                
             if admin_access_only:
                 company_crud = CompanyRepository(self.db_session)
-
-                # Validate if user has permission to acess the question
-                if not (await company_crud.user_has_role(current_user_id, result.quiz.company_id, RoleEnum.Admin) or
-                await company_crud.user_has_role(current_user_id, result.quiz.company_id, RoleEnum.Owner)): 
-                    logger.warning(f"Permission error: User \"{current_user_id}\" is not the admin / onwer in the company {result.quiz.company_id} related to the requested question")
-                    raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
+                await company_crud.get_company_by_id(result.quiz.company_id, current_user_id, admin_only=True)
+                
         return result 
 
     async def create_question(self, question_data: QuestionBaseSchema) -> Question:
@@ -130,7 +131,8 @@ class QuizRepository:
     async def get_answer_by_id(self, 
               answer_id: int, 
               current_user_id: int, 
-              admin_access_only: bool = False) -> Answer:
+              admin_access_only: bool = False,
+              member_access_only: bool = False) -> Answer:
         logger.debug(f"Received data:\nanswer_id -> {answer_id}")
         query = await self.db_session.execute(
                       select(Answer)
@@ -138,14 +140,14 @@ class QuizRepository:
         result = query.unique().scalar_one_or_none()
 
         if result:
+            if member_access_only:
+                company_crud = CompanyRepository(self.db_session)
+                await company_crud.get_company_by_id(result.question.quiz.company_id, current_user_id, member_only=True)
+                
             if admin_access_only:
                 company_crud = CompanyRepository(self.db_session)
+                await company_crud.get_company_by_id(result.question.quiz.company_id, current_user_id, admin_only=True)
 
-                # Validate if user has permission to acess the answer
-                if not (await company_crud.user_has_role(current_user_id, result.question.quiz.company_id, RoleEnum.Admin) or
-                await company_crud.user_has_role(current_user_id, result.question.quiz.company_id, RoleEnum.Owner)): 
-                    logger.warning(f"Permission error: User \"{current_user_id}\" is not the admin / onwer in the company {result.question.quiz.company_id} related to the requested question")
-                    raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
         return result 
 
     async def create_answer(self, answer_data: AnswerCreateSchema) -> Answer:

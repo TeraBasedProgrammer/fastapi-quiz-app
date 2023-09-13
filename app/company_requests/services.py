@@ -98,7 +98,7 @@ class CompanyRequestsRepository:
                 .join(User, CompanyRequest.sender_id == User.id)
                 .where((CompanyRequest.company_id == company_id) & (CompanyRequest.receiver_id == None)))
 
-            response_data = [{'request_id': item[0], 'user': item[1]} for item in query.all()]
+            response_data = [{'request_id': item[0], 'user': item[1]} for item in query.unique().all()]
             logger.debug(f"Successfully retrieved company requests: {response_data}")
             return response_data
         else:
@@ -107,7 +107,7 @@ class CompanyRequestsRepository:
                 .join(Company, CompanyRequest.company_id == Company.id)
                 .where((CompanyRequest.receiver_id == receiver_id) & (CompanyRequest.company_id.notin_(subquery))))
             
-            response_data = [{'invitation_id': item[0], 'sender_id': item[1], 'company': item[2]} for item in query.all()]
+            response_data = [{'invitation_id': item[0], 'sender_id': item[1], 'company': item[2]} for item in query.unique().all()]
             logger.debug(f"Successfully retrieved user invitations: {response_data}")
             return response_data
 
@@ -124,7 +124,7 @@ class CompanyRequestsRepository:
                 .join(User, CompanyRequest.receiver_id == User.id)
                 .where((CompanyRequest.company_id == company_id) & (CompanyRequest.sender_id == None)))
 
-            response_data = [{'invitation_id': item[0], 'user': item[1]} for item in query.all()]
+            response_data = [{'invitation_id': item[0], 'user': item[1]} for item in query.unique().all()]
             logger.debug(f"Successfully retrieved company invitations: {response_data}")
             return response_data
         else:
@@ -133,7 +133,7 @@ class CompanyRequestsRepository:
                 .join(Company, CompanyRequest.company_id == Company.id)
                 .where((CompanyRequest.sender_id == sender_id) & (CompanyRequest.company_id.notin_(subquery))))
             
-            response_data = [{'request_id': item[0], 'company': item[1]} for item in query.all()]
+            response_data = [{'request_id': item[0], 'company': item[1]} for item in query.unique().all()]
             logger.debug(f"Successfully retrieved user requests: {response_data}")
             return response_data
         

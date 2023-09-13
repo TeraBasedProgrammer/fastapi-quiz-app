@@ -36,7 +36,7 @@ class CompanyRepository:
     async def get_company_by_id(
         self, 
         company_id: int, 
-        current_user_email: EmailStr, 
+        current_user_id: int, 
         member_only: bool = False, 
         owner_only: bool = False,
         admin_only: bool = False
@@ -49,21 +49,22 @@ class CompanyRepository:
 
             # Check permissions
             if company.is_hidden or member_only:
-                member_user = list(filter(lambda x: x.users.email == current_user_email, company.users))
+                member_user = list(filter(lambda x: x.users.id == current_user_id, company.users))
                 if not member_user:
-                    logger.warning(f"Permission error: User \"{current_user_email}\" is not a member of the company")
+                    logger.warning(f"Permission error: User \"{current_user_id}\" is not a member of the company")
                     raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
             
             if owner_only:
-                owner_user = list(filter(lambda x: x.users.email == current_user_email and x.role == RoleEnum.Owner, company.users))
+                owner_user = list(filter(lambda x: x.users.id == current_user_id and x.role == RoleEnum.Owner, company.users))
                 if not owner_user:
-                    logger.warning(f"Permission error: User \"{current_user_email}\" is not an owner of the company")
+                    logger.warning(f"Permission error: User \"{current_user_id}\" is not an owner of the company")
                     raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
             if admin_only:
-                admin_user = list(filter(lambda x: x.users.email == current_user_email and (x.role == RoleEnum.Owner or x.role == RoleEnum.Admin), company.users))
+                admin_user = list(filter(lambda x: x.users.id == current_user_id and (x.role == RoleEnum.Owner or x.role == RoleEnum.Admin), company.users))
                 if not admin_user:
-                    logger.warning(f"Permission error: User \"{current_user_email}\" is not an admin of the company")
+                    logger.warning(f"Permission error: User \"{current_user_id}\" is not an admin of the company")
                     raise HTTPException(status.HTTP_403_FORBIDDEN, detail=error_handler("Forbidden"))
+                    
         return company 
 
 

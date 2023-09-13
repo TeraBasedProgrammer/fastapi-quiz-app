@@ -1,7 +1,7 @@
 import logging
 import json
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Any
 
 from fastapi import HTTPException
 from sqlalchemy import func, select
@@ -155,16 +155,17 @@ class AttemptRepository:
 
         # Save answers in redis for 48 hours
         attempt_questions = attempt.quiz.questions
-        questions_answers = {}
+        questions_answers = []
 
         for question in attempt_questions:
-            questions_answers[question.title] = q = {}
-            
-            q["answers"] = [answer.title for answer in question.answers]
+            q = {}
             user_answer = list(filter(lambda q: q.question_id == question.id, answers_instances))
-            if user_answer:
-                q["user_answer"] = user_answer[0].title
-                q["is_correct"] =  user_answer[0].is_correct
+
+            q["title"] = question.title
+            q["answers"] = [answer.title for answer in question.answers]
+            q["user_answer"] = user_answer[0].title if user_answer else None
+            q["is_correct"] =  user_answer[0].is_correct if user_answer else None
+            questions_answers.append(q)
 
         data = {
             "quiz": attempt.quiz.title,
@@ -175,3 +176,8 @@ class AttemptRepository:
 
         await redis.set(f"attempt-answers:{attempt.id}", json.dumps(data, ensure_ascii=False), ex=48*60*60)
         return f"{result}/{attempt.quiz.questions_count}"
+
+    async def get_attempt_results(self, attempt_id: int) -> Optional[dict[str, Any]]:
+         results = await redis.get(f"attempt-answers:{attempt_id}")
+         if results:
+            return json.loads(results)

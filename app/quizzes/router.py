@@ -39,7 +39,9 @@ async def get_quiz(quiz_id: int,
     # Initialize services
     quiz_crud = QuizRepository(session)
 
-    request_quiz = await quiz_crud.get_quiz_by_id(quiz_id=quiz_id, current_user_email=auth["email"], admin_access_only=True)
+    current_user_id = await get_current_user_id(session, auth)
+
+    request_quiz = await quiz_crud.get_quiz_by_id(quiz_id=quiz_id, current_user_id=current_user_id, admin_access_only=True)
     if not request_quiz:
         logger.warning(f"Quiz \"{quiz_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested quiz is not found"))
@@ -57,9 +59,11 @@ async def create_quiz(quiz_data: QuizBaseSchema,
     quiz_crud = QuizRepository(session)
     company_crud = CompanyRepository(session)
 
+    current_user_id = await get_current_user_id(session, auth)
+
     # Validate if given company exists
     company_id = quiz_data.company_id
-    company = await company_crud.get_company_by_id(company_id, auth["email"], admin_only=True)
+    company = await company_crud.get_company_by_id(company_id, current_user_id, admin_only=True)
     if not company:
         logger.warning(f"Company \"{company_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler(f"Company with id {company_id} is not found"))
@@ -80,8 +84,10 @@ async def create_question(question_data: QuestionBaseSchema,
     # Initialize services
     quiz_crud = QuizRepository(session)
 
+    current_user_id = await get_current_user_id(session, auth)
+
     # Validate if requested instances exist
-    request_quiz = await quiz_crud.get_quiz_by_id(quiz_id=question_data.quiz_id, current_user_email=auth["email"], 
+    request_quiz = await quiz_crud.get_quiz_by_id(quiz_id=question_data.quiz_id, current_user_id=current_user_id, 
                                                      admin_access_only=True)
     if not request_quiz:
         logger.warning(f"Quiz \"{question_data.quiz_id}\" is not found")
@@ -147,8 +153,10 @@ async def start_quiz_attempt(quiz_id: int,
     # Initialize services
     quiz_crud = QuizRepository(session)
     attempt_crud = AttemptRepository(session)
+
+    current_user_id = await get_current_user_id(session, auth)
  
-    request_quiz = await quiz_crud.get_quiz_by_id(quiz_id=quiz_id, current_user_email=auth["email"], member_access_only=True)
+    request_quiz = await quiz_crud.get_quiz_by_id(quiz_id=quiz_id, current_user_id=current_user_id, member_access_only=True)
     if not request_quiz:
         logger.warning(f"Quiz \"{quiz_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler("Requested quiz is not found"))
@@ -185,12 +193,14 @@ async def update_quiz(quiz_id: int,
     # Initialize services
     quiz_crud = QuizRepository(session)
 
+    current_user_id = await get_current_user_id(session, auth)
+
     updated_quiz_params = quiz_data.model_dump(exclude_none=True)
     if updated_quiz_params == {}:
         logger.warning("Validation error: No parameters have been provided")
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("At least one valid parameter (title, description) should be provided for quiz update"))
  
-    request_quiz = await quiz_crud.get_quiz_by_id(quiz_id=quiz_id, current_user_email=auth["email"], admin_access_only=True)
+    request_quiz = await quiz_crud.get_quiz_by_id(quiz_id=quiz_id, current_user_id=current_user_id, admin_access_only=True)
     if not request_quiz:
         logger.warning(f"Quiz \"{quiz_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler(f"Quiz with id {quiz_id} is not found"))
@@ -248,14 +258,13 @@ async def update_answer(answer_data: AnswerUpdateSchema,
     # Initialize services
     quiz_crud = QuizRepository(session)
 
+    current_user_id = await get_current_user_id(session, auth)
+
     updated_answer_params = answer_data.model_dump(exclude_none=True)
     if updated_answer_params == {}:
         logger.warning("Validation error: No parameters have been provided")
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("At least one valid parameter (title, is_correct) should be provided for answer update"))
-
-    # Retrieving current user id
-    current_user_id = await get_current_user_id(session, auth)
-    
+ 
     answer = await quiz_crud.get_answer_by_id(answer_id, current_user_id, admin_access_only=True)
     if not answer:
         logger.warning(f"Answer \"{answer_id}\" is not found")
@@ -263,7 +272,7 @@ async def update_answer(answer_data: AnswerUpdateSchema,
 
     try:
         if answer.is_correct:
-            logger.warning(f"User \"{current_user_id}\" tried to unset a correct answer")
+            logger.warning(f"User \"{auth['email']}\" tried to unset a correct answer")
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler(f"You can't unset a correct answer directly. Instead mark another answer as correct"))
 
         # Make previous correct answer uncorrect before setting up a new one
@@ -290,7 +299,9 @@ async def delete_quiz(quiz_id: int,
     # Initialize services
     quiz_crud = QuizRepository(session)
 
-    request_quiz = await quiz_crud.get_quiz_by_id(quiz_id=quiz_id, current_user_email=auth["email"], admin_access_only=True)
+    current_user_id = await get_current_user_id(session, auth)
+
+    request_quiz = await quiz_crud.get_quiz_by_id(quiz_id=quiz_id, current_user_id=current_user_id, admin_access_only=True)
     if not request_quiz:
         logger.warning(f"Quiz \"{quiz_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler(f"Quiz with id {quiz_id} is not found"))
