@@ -13,7 +13,7 @@ from app.auth.handlers import AuthHandler
 from app.auth.schemas import UserSignUp, UserSignUpAuth0
 from app.companies.models import CompanyUser, Company
 from app.quizzes.models import Quiz
-from app.quizzes_workflow.models import Attemp
+from app.quizzes_workflow.models import Attempt
 from app.users.models import User
 from app.utils import (create_model_instance, delete_model_instance,
                        update_model_instance)
@@ -104,12 +104,12 @@ class UserRepository:
     async def set_global_score(self, user_id: int) -> None:
         logger.debug(f"Received data:\nuser_id -> \"{user_id}\"")
         query = await self.db_session.execute(
-            select(Attemp)
-            .where(Attemp.user_id == user_id)
+            select(Attempt)
+            .where(Attempt.user_id == user_id)
         )
-        attemps = query.scalars().unique().all() 
-        questions_count = sum([attemp.quiz.questions_count for attemp in attemps])
-        results_count = sum([attemp.result for attemp in attemps])
+        attempts = query.scalars().unique().all() 
+        questions_count = sum([attempt.quiz.questions_count for attempt in attempts])
+        results_count = sum([attempt.result for attempt in attempts])
 
         avg_score = results_count / questions_count
         await update_model_instance(
@@ -126,16 +126,16 @@ class UserRepository:
     ) -> None:
         logger.debug(f"Received data:\nuser_id -> \"{user_id}\"")
         query = await self.db_session.execute(
-            select(Attemp)
+            select(Attempt)
             .where(
-                (Attemp.user_id == user_id) &
-                (Attemp.quiz_id == Quiz.id) &
+                (Attempt.user_id == user_id) &
+                (Attempt.quiz_id == Quiz.id) &
                 (Company.id == Quiz.company_id)
             )
         )
-        attemps = query.scalars().unique().all() 
-        questions_count = sum([attemp.quiz.questions_count for attemp in attemps])
-        results_count = sum([attemp.result for attemp in attemps])
+        attempts = query.scalars().unique().all() 
+        questions_count = sum([attempt.quiz.questions_count for attempt in attempts])
+        results_count = sum([attempt.result for attempt in attempts])
 
         avg_score = results_count / questions_count
 

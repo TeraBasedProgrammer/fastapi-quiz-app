@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from .models import Attemp
+from .models import Attempt
 
 
 async def time_is_between(
@@ -11,15 +11,15 @@ async def time_is_between(
     return start_time.time() <= time_to_check.time() <= end_time.time()
 
 
-async def attemp_is_completed(
-    attemp: Attemp, 
+async def attempt_is_completed(
+    attempt: Attempt, 
     time_to_check: datetime
 ) -> bool:
     if not await time_is_between(
-        start_time=attemp.start_time,
+        start_time=attempt.start_time,
         time_to_check=time_to_check,
-        end_time=attemp.end_time
-    ) or attemp.spent_time is not None:
+        end_time=attempt.end_time
+    ) or attempt.spent_time is not None:
         return True
     else:
         return False

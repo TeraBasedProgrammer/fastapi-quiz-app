@@ -106,22 +106,22 @@ class UpdateModelStatus(BaseModel):
     fully_created: bool
 
 
-class AttempAnswerSchema(AnswerBaseSchema):
+class AttemptAnswerSchema(AnswerBaseSchema):
     id: int
 
 
-class AttempQuestionSchema(QuestionBaseSchema):
+class AttemptQuestionSchema(QuestionBaseSchema):
     id: int
-    answers: List[AttempAnswerSchema]
+    answers: List[AttemptAnswerSchema]
     
     class Config:
         from_attributes = True
 
-class AttempQuizSchema(QuizBaseSchema):
+class AttemptQuizSchema(QuizBaseSchema):
     id: int
     completion_time: int
     questions_count: int
-    questions: List[AttempQuestionSchema]
+    questions: List[AttemptQuestionSchema]
     
 
 

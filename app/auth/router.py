@@ -84,7 +84,7 @@ async def signup(user: UserSignUp, session: AsyncSession = Depends(get_async_ses
 
 @auth_router.post("/login/")
 async def login(user: UserLogin, session: AsyncSession = Depends(get_async_session)) -> Optional[Dict[str, str]]:
-    logger.info(f"Login attemp with email \"{user.email}\"")
+    logger.info(f"Login attempt with email \"{user.email}\"")
 
     crud = UserRepository(session)
     user_existing_object = await crud.get_user_by_email(user.email)

@@ -3,23 +3,23 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from app.quizzes.schemas import AttempQuizSchema
+from app.quizzes.schemas import AttemptQuizSchema
 
 
-class CreateAttemp(BaseModel):
+class CreateAttempt(BaseModel):
     quiz_id: int
     user_id: int
     start_time: datetime
 
 
-class AttempReturn(BaseModel):
+class AttemptReturn(BaseModel):
     id: int
-    quiz: AttempQuizSchema
+    quiz: AttemptQuizSchema
     
     class Config:
         from_attributes = True
 
 
-class AttempResult(BaseModel):
+class AttemptResult(BaseModel):
     spent_time: str
     result: int

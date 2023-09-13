@@ -12,53 +12,53 @@ from app.quizzes.services import QuizRepository
 from app.users.services import error_handler, UserRepository
 from app.utils import get_current_user_id
 
-from .services import AttempRepository
-from .utils import attemp_is_completed
+from .services import AttemptRepository
+from .utils import attempt_is_completed
 
 logger = logging.getLogger("main_logger")
 auth_handler = AuthHandler()
 
-attemp_router = APIRouter(
-    prefix="/attempps", tags=["Attemps"], responses={404: {"description": "Not found"}}
+attempt_router = APIRouter(
+    prefix="/attempts", tags=["Attempts"], responses={404: {"description": "Not found"}}
 )
 
 
-@attemp_router.post(
-    "/{attemp_id}/answer-question/{question_id}/{answer_id}/",
+@attempt_router.post(
+    "/{attempt_id}/answer-question/{question_id}/{answer_id}/",
     response_model=Dict[str, str],
 )
 async def answer_question(
-    attemp_id: int,
+    attempt_id: int,
     question_id: int,
     answer_id: int,
     session: AsyncSession = Depends(get_async_session),
     auth=Depends(auth_handler.auth_wrapper),
 ) -> Dict[str, str]:
-    logger.info(f"Answering question \"{question_id}\" on attemp \"{attemp_id}\" with answer \"{answer_id}\"")
+    logger.info(f"Answering question \"{question_id}\" on attempt \"{attempt_id}\" with answer \"{answer_id}\"")
 
     # Initialize services
-    attemp_crud = AttempRepository(session)
+    attempt_crud = AttemptRepository(session)
     quiz_crud = QuizRepository(session)
 
     current_user_id = await get_current_user_id(session, auth)
 
     # Validate if requested instances exist and if user can access them
 
-    # Attemp
-    request_attemp = await attemp_crud.get_attemp_by_id(
-        attemp_id=attemp_id, 
+    # Attempt
+    request_attempt = await attempt_crud.get_attempt_by_id(
+        attempt_id=attempt_id, 
         current_user_id=current_user_id, 
         validate_user=True
     )
 
-    if not request_attemp:
-        logger.warning(f"Attemp \"{attemp_id}\" is not found")
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler(f"Attemp with id {attemp_id} is not found"))
+    if not request_attempt:
+        logger.warning(f"Attempt \"{attempt_id}\" is not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler(f"Attempt with id {attempt_id} is not found"))
     
-    # Check if attemp is completed
-    if await attemp_is_completed(request_attemp, datetime.utcnow()):
-        logger.warning(f"User \"{current_user_id}\" has already completed attemp \"{attemp_id}\"")
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler(f"You've already completed this attemp"))
+    # Check if attempt is completed
+    if await attempt_is_completed(request_attempt, datetime.utcnow()):
+        logger.warning(f"User \"{current_user_id}\" has already completed attempt \"{attempt_id}\"")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler(f"You've already completed this attempt"))
 
     # Question
     request_question = await quiz_crud.get_question_by_id(question_id=question_id, current_user_id=current_user_id, admin_access_only=True)
@@ -66,9 +66,9 @@ async def answer_question(
         logger.warning(f"Question \"{question_id}\" is not found")
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler(f"Question with id {question_id} is not found"))
 
-    if request_question.quiz_id != request_attemp.quiz_id:
-        logger.warning(f"Current attemp's quiz \"{request_attemp.quiz_id}\" doesn't have question \"{request_question.id}\"")
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler(f"Quiz {request_attemp.quiz_id} doesn't have question {question_id}"))
+    if request_question.quiz_id != request_attempt.quiz_id:
+        logger.warning(f"Current attempt's quiz \"{request_attempt.quiz_id}\" doesn't have question \"{request_question.id}\"")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler(f"Quiz {request_attempt.quiz_id} doesn't have question {question_id}"))
     
     # Answer
     request_answer = await quiz_crud.get_answer_by_id(answer_id, current_user_id, admin_access_only=True)
@@ -77,55 +77,55 @@ async def answer_question(
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler(f"Answer with id {answer_id} is not found"))
     
     if request_answer.question_id != request_question.id:
-        logger.warning(f"Current attemp's question \"{request_question.id}\" doesn't have answer \"{request_answer.id}\"")
+        logger.warning(f"Current attempt's question \"{request_question.id}\" doesn't have answer \"{request_answer.id}\"")
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler(f"Question {request_question.id} doesn't have answer {answer_id}"))
 
     # Add data to Redis
-    await attemp_crud.save_answer(
-        attemp_id=request_attemp.id, 
-        quiz_id=request_attemp.quiz_id,
+    await attempt_crud.save_answer(
+        attempt_id=request_attempt.id, 
+        quiz_id=request_attempt.quiz_id,
         question_id=question_id,
         answer_id=answer_id,
     )
     return {"response": "Answer received"}
 
 
-@attemp_router.post("/{attemp_id}/complete/")
-async def complete_attemp(
-    attemp_id: int,
+@attempt_router.post("/{attempt_id}/complete/")
+async def complete_attempt(
+    attempt_id: int,
     background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_async_session),
     auth=Depends(auth_handler.auth_wrapper)
 ):
     # Initialize services
-    attemp_crud = AttempRepository(session)
+    attempt_crud = AttemptRepository(session)
     user_crud = UserRepository(session)
 
     current_user_id = await get_current_user_id(session, auth)
 
-    request_attemp = await attemp_crud.get_attemp_by_id(
-        attemp_id=attemp_id,
+    request_attempt = await attempt_crud.get_attempt_by_id(
+        attempt_id=attempt_id,
         current_user_id=current_user_id,
         validate_user=True,
     )
 
-    if not request_attemp:
-        logger.warning(f"Attemp \"{attemp_id}\" is not found")
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler(f"Attemp with id {attemp_id} is not found"))
+    if not request_attempt:
+        logger.warning(f"Attempt \"{attempt_id}\" is not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=error_handler(f"Attempt with id {attempt_id} is not found"))
     
-    # Check if attemp is already completed
-    if await attemp_is_completed(request_attemp, datetime.utcnow()):
-        logger.warning(f"User \"{current_user_id}\" has already completed attemp \"{attemp_id}\"")
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler(f"You've already completed this attemp"))
+    # Check if attempt is already completed
+    if await attempt_is_completed(request_attempt, datetime.utcnow()):
+        logger.warning(f"User \"{current_user_id}\" has already completed attempt \"{attempt_id}\"")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler(f"You've already completed this attempt"))
 
-    result = await attemp_crud.calculate_attemp_result(attemp=request_attemp, timestamp=datetime.utcnow())
+    result = await attempt_crud.calculate_attempt_result(attempt=request_attempt, timestamp=datetime.utcnow())
 
     # Update user ratings
-    background_tasks.add_task(user_crud.set_global_score, user_id=request_attemp.user_id)
+    background_tasks.add_task(user_crud.set_global_score, user_id=request_attempt.user_id)
     background_tasks.add_task(
         user_crud.set_company_score, 
-        user_id=request_attemp.user_id, 
-        company_id=request_attemp.quiz.company_id,
+        user_id=request_attempt.user_id, 
+        company_id=request_attempt.quiz.company_id,
     )
 
     return {"result": f"{result}"} 

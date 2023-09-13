@@ -1,4 +1,5 @@
 import logging
+import asyncio
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
@@ -9,8 +10,8 @@ from starlette import status
 from app.auth.handlers import AuthHandler
 from app.companies.services import CompanyRepository
 from app.database import get_async_session
-from app.quizzes_workflow.schemas import AttempReturn
-from app.quizzes_workflow.services import AttempRepository
+from app.quizzes_workflow.schemas import AttemptReturn
+from app.quizzes_workflow.services import AttemptRepository
 from app.users.schemas import DeletedInstanceResponse
 from app.users.services import error_handler
 from app.utils import get_current_user_id
@@ -136,16 +137,16 @@ async def create_answer(answer_data: AnswerCreateSchema,
                             detail=error_handler(f"Question {question_id} already has answer with provided title"))
 
 
-@quiz_router.post("/{quiz_id}/attemp/start/", 
-                  response_model=AttempReturn,)
-async def start_quiz_attemp(quiz_id: int,
+@quiz_router.post("/{quiz_id}/attempt/start/", 
+                  response_model=AttemptReturn,)
+async def start_quiz_attempt(quiz_id: int,
                             session: AsyncSession = Depends(get_async_session),
-                            auth=Depends(auth_handler.auth_wrapper)) -> AttempReturn:
-    logger.info(f"Starting quiz \"{quiz_id}\" attemp")
+                            auth=Depends(auth_handler.auth_wrapper)) -> AttemptReturn:
+    logger.info(f"Starting quiz \"{quiz_id}\" attempt")
 
     # Initialize services
     quiz_crud = QuizRepository(session)
-    attemp_crud = AttempRepository(session)
+    attempt_crud = AttemptRepository(session)
  
     request_quiz = await quiz_crud.get_quiz_by_id(quiz_id=quiz_id, current_user_email=auth["email"], member_access_only=True)
     if not request_quiz:
@@ -161,17 +162,17 @@ async def start_quiz_attemp(quiz_id: int,
     current_user_id = await get_current_user_id(session, auth)
 
     # Check if user has available attemps for this quiz
-    if not await attemp_crud.user_has_attemps(quiz_id=quiz_id, user_id=current_user_id):
-        logger.warning(f"User \"{auth['email']}\" has already used all availabe attemps for quiz \"{quiz_id}\"")
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("You've used all available attemps for this quiz"))
+    if not await attempt_crud.user_has_attempts(quiz_id=quiz_id, user_id=current_user_id):
+        logger.warning(f"User \"{auth['email']}\" has already used all availabe attempts for quiz \"{quiz_id}\"")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("You've used all available attempts for this quiz"))
 
-    # Check if user hasn't start this attemp already
-    if await attemp_crud.has_started_attemp(current_user_id, quiz_id):
-        logger.warning(f"User \"{auth['email']}\" has an ongoing attemp with quiz \"{quiz_id}\"")
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("You already have an ongoing attemp with this quiz"))
+    # Check if user hasn't start this attempt already
+    if await attempt_crud.has_started_attempt(current_user_id, quiz_id):
+        logger.warning(f"User \"{auth['email']}\" has an ongoing attempt with quiz \"{quiz_id}\"")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error_handler("You already have an ongoing attempt with this quiz"))
     
-    attemp = await attemp_crud.create_attemp(quiz_id=quiz_id, user_id=current_user_id, quiz_completion_time=request_quiz.completion_time)
-    return AttempReturn(id=attemp.id, quiz=attemp.quiz)
+    attempt = await attempt_crud.create_attempt(quiz_id=quiz_id, user_id=current_user_id, quiz_completion_time=request_quiz.completion_time)
+    return AttemptReturn(id=attempt.id, quiz=attempt.quiz)
     
                             
 @quiz_router.patch("/{quiz_id}/update/", response_model=Optional[QuizSchema])

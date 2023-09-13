@@ -13,7 +13,7 @@ from app.company_requests.router import invitation_router, request_router
 from app.config import settings
 from app.log_config import LOGGING_CONFIG
 from app.quizzes.router import quiz_router
-from app.quizzes_workflow.router import attemp_router
+from app.quizzes_workflow.router import attempt_router
 from app.users.router import user_router
 
 # Set up logging configuration 
@@ -33,7 +33,7 @@ app.include_router(quiz_router)
 app.include_router(company_router)
 app.include_router(request_router)
 app.include_router(invitation_router)
-app.include_router(attemp_router)
+app.include_router(attempt_router)
 
 origins = [
     "http://localhost:8000",

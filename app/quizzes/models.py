@@ -3,7 +3,7 @@ from sqlalchemy import (Boolean, Column, ForeignKey, Integer, String, Text,
 from sqlalchemy.orm import relationship
 
 from app.database import Base
-from app.quizzes_workflow.models import Attemp
+from app.quizzes_workflow.models import Attempt
 
 
 class Quiz(Base):
@@ -17,10 +17,10 @@ class Quiz(Base):
     
     # Quiz completion time (in minutes)
     completion_time = Column(Integer, nullable=False)
-    # daily_attemps - ?
+    # daily_attempts - ?
 
     questions = relationship("Question", back_populates="quiz", lazy='joined') 
-    attemps = relationship("Attemp", back_populates="quiz", lazy='joined') 
+    attempts = relationship("Attempt", back_populates="quiz", lazy='joined') 
 
     @property
     def questions_count(self) -> int:
