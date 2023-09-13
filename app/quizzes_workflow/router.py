@@ -86,6 +86,7 @@ async def answer_question(
         quiz_id=request_attempt.quiz_id,
         question_id=question_id,
         answer_id=answer_id,
+        quiz_completion_time=request_attempt.quiz.completion_time
     )
     return {"response": "Answer received"}
 
@@ -129,3 +130,12 @@ async def complete_attempt(
     )
 
     return {"result": f"{result}"} 
+
+
+@attempt_router.get("/{attempt_id}/answers/")
+async def get_attempt_answers(
+    attempt_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    auth=Depends(auth_handler.auth_wrapper)
+):
+    pass

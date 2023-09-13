@@ -1,5 +1,5 @@
 import logging
-import asyncio
+import json
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -81,14 +81,19 @@ class AttemptRepository:
         return result
 
     async def save_answer(
-        self, attempt_id: int, quiz_id: int, question_id: int, answer_id: int
+        self, 
+        attempt_id: int, 
+        quiz_id: int, 
+        question_id: int, 
+        answer_id: int,
+        quiz_completion_time: int,
     ) -> None:
         logger.debug(
             f"Received data:\nattempt_id -> {attempt_id}\nquiz_id -> {quiz_id}\nquestion_id -> {question_id}\nanswer_id -> {answer_id}"
         )
         logger.info(f'Saving user answer for quiz "{quiz_id}" in redis for 48 hours ')
         key = f"{attempt_id}:{quiz_id}:{question_id}"
-        await redis.set(key, answer_id, ex=172800)
+        await redis.set(key, answer_id, ex=quiz_completion_time * 60 + 120)
 
         logger.info("Answer for was successfully saved")
 
@@ -148,4 +153,25 @@ class AttemptRepository:
             AttemptResult(spent_time=spent_time_str, result=result),
         )        
 
+        # Save answers in redis for 48 hours
+        attempt_questions = attempt.quiz.questions
+        questions_answers = {}
+
+        for question in attempt_questions:
+            questions_answers[question.title] = q = {}
+            
+            q["answers"] = [answer.title for answer in question.answers]
+            user_answer = list(filter(lambda q: q.question_id == question.id, answers_instances))
+            if user_answer:
+                q["user_answer"] = user_answer[0].title
+                q["is_correct"] =  user_answer[0].is_correct
+
+        data = {
+            "quiz": attempt.quiz.title,
+            "result": f"{result}/{attempt.quiz.questions_count}",
+            "spent_time": f"{spent_time_str}/{attempt.quiz.completion_time}:00",
+            "questions": questions_answers
+        }
+
+        await redis.set(f"attempt-answers:{attempt.id}", json.dumps(data, ensure_ascii=False), ex=48*60*60)
         return f"{result}/{attempt.quiz.questions_count}"
