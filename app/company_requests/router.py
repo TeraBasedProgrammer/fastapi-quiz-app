@@ -18,7 +18,6 @@ logger = logging.getLogger("main_logger")
 auth_handler = AuthHandler()
 
 
-
 request_router = APIRouter(
     prefix="/requests",
     tags=["Company membership requests"],

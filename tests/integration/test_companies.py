@@ -6,9 +6,9 @@ import httpx
 import pytest
 
 from app.companies.models import RoleEnum
-
-from tests.conftest import (DEFAULT_COMPANY_DATA, DEFAULT_QUIZ_DATA,
-                       DEFAULT_USER_DATA)
+from tests.fixtures.company_fixtures import DEFAULT_COMPANY_DATA
+from tests.fixtures.quiz_fixtures import DEFAULT_QUIZ_DATA
+from tests.fixtures.user_fixtures import DEFAULT_USER_DATA
 
 
 async def test_get_companies_empty(

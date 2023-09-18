@@ -5,8 +5,7 @@ import pytest
 from pydantic import EmailStr
 
 from app.companies.models import RoleEnum
-
-from tests.conftest import DEFAULT_USER_DATA
+from tests.fixtures.user_fixtures import DEFAULT_USER_DATA
 
 
 async def test_get_user_invitations(

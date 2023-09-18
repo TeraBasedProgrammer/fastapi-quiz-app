@@ -8,9 +8,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.companies.models import RoleEnum
 from app.quizzes.utils import set_question_status, set_quiz_status
-
-from tests.conftest import (DEFAULT_ANSWER_DATA, DEFAULT_QUESTION_DATA,
-                       DEFAULT_QUIZ_DATA, DEFAULT_USER_DATA)
+from tests.fixtures.quiz_fixtures import (DEFAULT_ANSWER_DATA,
+                                          DEFAULT_QUESTION_DATA,
+                                          DEFAULT_QUIZ_DATA)
+from tests.fixtures.user_fixtures import DEFAULT_USER_DATA
 
 
 async def test_get_quiz_by_id(
