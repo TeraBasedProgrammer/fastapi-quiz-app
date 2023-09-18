@@ -7,7 +7,7 @@ import pytest
 
 from app.companies.models import RoleEnum
 
-from .conftest import (DEFAULT_COMPANY_DATA, DEFAULT_QUIZ_DATA,
+from tests.conftest import (DEFAULT_COMPANY_DATA, DEFAULT_QUIZ_DATA,
                        DEFAULT_USER_DATA)
 
 

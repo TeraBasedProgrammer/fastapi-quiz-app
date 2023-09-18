@@ -6,7 +6,7 @@ from pydantic import EmailStr
 
 from app.companies.models import RoleEnum
 
-from .conftest import DEFAULT_USER_DATA
+from tests.conftest import DEFAULT_USER_DATA
 
 
 @pytest.mark.parametrize(

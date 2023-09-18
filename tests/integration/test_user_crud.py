@@ -5,7 +5,7 @@ from typing import Any, Callable
 import httpx
 import pytest
 
-from .conftest import DEFAULT_USER_DATA
+from tests.conftest import DEFAULT_USER_DATA
 
 
 # Get all users

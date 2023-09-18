@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.companies.models import RoleEnum
 from app.quizzes.utils import set_question_status, set_quiz_status
 
-from .conftest import (DEFAULT_ANSWER_DATA, DEFAULT_QUESTION_DATA,
+from tests.conftest import (DEFAULT_ANSWER_DATA, DEFAULT_QUESTION_DATA,
                        DEFAULT_QUIZ_DATA, DEFAULT_USER_DATA)
 
 

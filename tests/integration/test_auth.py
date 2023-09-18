@@ -1,6 +1,5 @@
 import json
 from datetime import datetime
-# Temp solution:
 from typing import Any, Callable
 
 import httpx
@@ -194,3 +193,4 @@ async def test_me_expired_token(client: httpx.AsyncClient) -> None:
 
     assert response.status_code == 401
     assert response.json() == {'detail': 'Signature has expired'}
+    
